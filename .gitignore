@@ -1,0 +1,38 @@
+﻿# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+*.log
+app.log
+server.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Bot state and user data (auto-generated)
+users/
+bot_state.json
+trades.json
+settings.json
+
+# Cache files
+selected_coins_cache.json
+*.lock
+
+# Temporary files
+token.txt
+token2.txt
+run_debug.py
+
+# OS
+.DS_Store
+Thumbs.db

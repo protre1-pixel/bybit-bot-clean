@@ -1,8 +1,2 @@
-[2026-07-23 16:04:01,853] INFO: [INIT] Loaded secrets from: /home/protre/codex-secrets/secrets.env
-[2026-07-23 16:04:01,853] INFO: [INIT] Bybit API 연결 성공
-[2026-07-23 16:04:01,860] INFO: [INIT] 백그라운드 가격 업데이트 시작
-[2026-07-23 16:04:01,860] INFO: [INIT] Bybit Bot 시작 - 사용자 로그인 대기 중
  * Serving Flask app 'app'
  * Debug mode: off
-Address already in use
-Port 5000 is in use by another program. Either identify and stop that program, or start the server with a different port.

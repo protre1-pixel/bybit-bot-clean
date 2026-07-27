@@ -10,7 +10,7 @@ import time
 from dotenv import load_dotenv
 from pybit.unified_trading import HTTP
 import uuid
-import hashlib
+import bcrypt
 import logging
 from filelock import FileLock
 from pathlib import Path
@@ -62,9 +62,12 @@ template_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templat
 app = Flask(__name__, template_folder=template_dir)
 
 # JWT 설정
-JWT_SECRET = 'bybit-bot-jwt-secret-2026'
+JWT_SECRET = os.getenv('JWT_SECRET', 'bybit-bot-jwt-secret-2026-fallback')
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION = 86400 * 7  # 7일
+
+if JWT_SECRET == 'bybit-bot-jwt-secret-2026-fallback':
+    logger.warning("[WARN] JWT_SECRET가 설정되지 않았습니다. 환경변수 JWT_SECRET을 설정하세요.")
 
 # 세션 설정 (JWT 토큰 기반 인증으로 변경)
 app.config['SECRET_KEY'] = JWT_SECRET
@@ -119,8 +122,13 @@ def save_users(users):
         logger.error(f"[ERROR] 사용자 목록 저장 실패: {e}")
 
 def hash_password(password):
-    """비밀번호 해싱"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """비밀번호 해싱 (bcrypt 사용)"""
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def verify_password(password, password_hash):
+    """비밀번호 검증 (bcrypt 사용)"""
+    return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
 
 def get_current_user():
     """현재 로그인한 사용자 반환 (JWT 토큰 기반)"""
@@ -132,7 +140,7 @@ def get_current_user():
         token = auth_header.split(' ')[1]
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload.get('username')
-    except:
+    except (jwt.InvalidTokenError, jwt.ExpiredSignatureError, IndexError, AttributeError):
         return None
 
 def token_required(f):
@@ -162,14 +170,14 @@ def token_required(f):
     return decorated
 
 # 기본 코인 설정 템플릿
-def create_default_coin_state(coin_name):
+def create_default_coin_state(coin_name, margin=1000):
     """새 코인의 기본 상태 생성"""
     return {
         "position": None,
         "entry_price": None,
         "entry_time": None,
         "current_price": 0,
-        "margin": 1000,
+        "margin": margin,
         "leverage": 10,
         "position_size": 0,
         "profit": 0,
@@ -179,14 +187,86 @@ def create_default_coin_state(coin_name):
         "position_ratio": 75,
         "tp": 2.0,
         "sl": 1.5,
-        "last_close_time": None  # 거래 종료 시간 (반복 진입 방지용)
+        "last_close_time": None
     }
+
+def load_cached_coins():
+    """캐시된 선별 코인 로드"""
+    cache_file = os.path.join(os.path.dirname(__file__), "selected_coins_cache.json")
+    try:
+        if os.path.exists(cache_file):
+            with open(cache_file, 'r') as f:
+                data = json.load(f)
+
+            # 24시간 내인지 확인
+            last_update = data.get("timestamp", 0)
+            current_time = datetime.now().timestamp()
+
+            if (current_time - last_update) < 86400:  # 24시간 = 86400초
+                logger.info(f"[INFO] 캐시된 코인 사용 ({len(data.get('coins', []))}개)")
+                return data.get("coins", [])
+    except Exception as e:
+        logger.error(f"[ERROR] 캐시 파일 로드 실패: {e}")
+
+    return None  # 캐시 없음, 재선별 필요
+
+def save_cached_coins(coins):
+    """선별된 코인을 파일에 캐시"""
+    cache_file = os.path.join(os.path.dirname(__file__), "selected_coins_cache.json")
+    try:
+        data = {
+            "coins": coins,
+            "timestamp": datetime.now().timestamp()
+        }
+        with open(cache_file, 'w') as f:
+            json.dump(data, f, indent=2)
+        logger.info(f"[INFO] 선별 코인 캐시 저장 ({len(coins)}개): {coins}")
+    except Exception as e:
+        logger.error(f"[ERROR] 캐시 저장 실패: {e}")
+
+def get_top_coins_by_volume():
+    """유동성 + 거래량 기준 상위 10개 코인 선별 (Bybit)"""
+    try:
+        if not bybit_client:
+            logger.warning("[WARN] Bybit 미연결 - 기본 코인 반환")
+            return ["sol", "doge", "ada", "avax", "link", "matic", "shib", "ape", "sui", "inj", "floki"]
+
+        response = bybit_client.get_tickers(category="spot", limit=50)
+
+        if response['retCode'] != 0 or not response['result']['list']:
+            logger.error(f"[ERROR] Bybit 코인 조회 실패: {response}")
+            return []
+
+        # 거래량 기준으로 정렬
+        coins_data = response['result']['list']
+        coins_data = sorted(coins_data, key=lambda x: float(x.get('turnover24h', 0)), reverse=True)
+
+        # 제외할 대형/스테이블 코인
+        excluded = ['BTC', 'ETH', 'BNB', 'XRP', 'USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'FDUSD']
+
+        # 상위 10개 선별 (USDT 쌍만)
+        top_coins = []
+        for coin_info in coins_data:
+            symbol = coin_info['symbol']
+            if symbol.endswith('USDT') and len(top_coins) < 10:
+                coin_name = symbol.replace('USDT', '').lower()
+                if coin_name.upper() not in excluded:
+                    top_coins.append(coin_name)
+
+        top_coins = top_coins[:10]
+        save_cached_coins(top_coins)  # 파일에 캐시 저장
+        return top_coins
+
+    except Exception as e:
+        logger.error(f"[ERROR] get_top_coins_by_volume: {e}")
+        return []
 
 # 기본 상태 (coins는 register에서만 초기화!)
 DEFAULT_STATE = {
     "mode": "paper",
-    "coins": [],  # 초기화 후 코인 유지를 위해 빈 배열로 시작
+    "coins": [],
     "total_seed": 3000,
+    "trading_enabled": False,  # 거래 활성화 여부
 }
 
 def _get_file_lock(filepath):
@@ -365,7 +445,7 @@ def calculate_atr(symbol, period=14, timeframe=60):
 
             return atr
         else:
-            # Bybit 연결 실패시 yfinance 폴백
+            logger.warning(f"[WARN] Bybit 연결 실패, yfinance 폴백: {symbol}")
             data = yf.download(f"{symbol}-USD", period='60d', interval='1h', progress=False)
             if data is None or len(data) < period + 1:
                 return None
@@ -387,7 +467,7 @@ def calculate_atr(symbol, period=14, timeframe=60):
 
             return atr
     except Exception as e:
-        print(f"[DEBUG] ATR 계산 에러: {symbol} - {e}")
+        logger.error(f"[ERROR] ATR 계산 에러: {symbol} - {e}")
         return None
 
 def calculate_sma(symbol, period=20, timeframe=60):
@@ -451,7 +531,7 @@ def calculate_sma(symbol, period=20, timeframe=60):
 
             return sma
     except Exception as e:
-        print(f"[DEBUG] SMA 계산 에러: {symbol} - {e}")
+        logger.error(f"[ERROR] SMA 계산 에러: {symbol} - {e}")
         return None
 
 def check_entry_signal(symbol, coin_key, state):
@@ -491,14 +571,15 @@ def auto_trade(coin_key, symbol, state, username=None):
             return
 
         # ⭐ 거래 종료 후 5분 이내는 자동 거래 비활성화 (반복 진입 방지)
-        if "last_close_time" in state[coin_key] and state[coin_key]["last_close_time"]:
-            try:
+        try:
+            if "last_close_time" in state[coin_key] and state[coin_key]["last_close_time"]:
                 last_close_time = datetime.fromisoformat(state[coin_key]["last_close_time"])
                 elapsed = (datetime.now() - last_close_time).total_seconds()
                 if elapsed < 300:  # 300초 = 5분
+                    logger.debug(f"[DEBUG] {coin_key.upper()}: 거래 종료 후 {elapsed:.0f}초, 대기 중...")
                     return
-            except:
-                pass
+        except (ValueError, TypeError) as e:
+            logger.warning(f"[WARN] last_close_time 파싱 실패 ({coin_key}): {e}")
 
         # 거래 진입 후 최소 1분은 TP/SL 체크 안함 (안정화 대기)
         if state[coin_key]["position"] and state[coin_key]["entry_time"]:
@@ -507,8 +588,8 @@ def auto_trade(coin_key, symbol, state, username=None):
                 elapsed = (datetime.now() - entry_time).total_seconds()
                 if elapsed < 60:  # 60초 이내는 TP/SL 체크 안함
                     return
-            except:
-                pass
+            except (ValueError, TypeError) as e:
+                logger.warning(f"[WARN] entry_time 파싱 실패 ({coin_key}): {e}")
 
         # TP/SL 체크
         if state[coin_key]["position"]:
@@ -545,30 +626,43 @@ def auto_trade(coin_key, symbol, state, username=None):
                 elif current_price >= sl_price:
                     close_trade(coin_key, sl_price, "Stop Loss", state, username)
 
-        # 진입 신호
+        # 진입 신호 (최근 거래 종료 직후는 진입 신호 무시)
         if not state[coin_key]["position"]:
-            signal = check_entry_signal(symbol, coin_key, state)
-            if signal:
-                # 코인별 설정에서 시드와 레버리지 가져오기
-                coin_settings = state.get("coin_settings", {}).get(coin_key, {})
-                current_seed = coin_settings.get("current_seed", coin_settings.get("initial_seed", 1000))
-                entry_percent = coin_settings.get("entry_percent", 75) / 100
-                leverage = coin_settings.get("leverage", 10)
+            # 거래 종료 직후인지 확인 (last_close_time 설정 후 1분 이내)
+            is_recently_closed = False
+            try:
+                if "last_close_time" in state[coin_key] and state[coin_key]["last_close_time"]:
+                    last_close_time = datetime.fromisoformat(state[coin_key]["last_close_time"])
+                    elapsed = (datetime.now() - last_close_time).total_seconds()
+                    if elapsed < 300:  # 5분 이내
+                        is_recently_closed = True
+            except (ValueError, TypeError):
+                pass
 
-                # 코인별 시드에서만 진입
-                if current_seed > 0:
-                    state[coin_key]["position"] = signal
-                    state[coin_key]["entry_price"] = current_price
-                    state[coin_key]["entry_time"] = datetime.now().isoformat()
-                    state[coin_key]["max_profit_price"] = current_price
+            # 최근에 종료된 거래가 아닐 때만 진입 신호 체크
+            if not is_recently_closed:
+                signal = check_entry_signal(symbol, coin_key, state)
+                if signal:
+                    # 코인별 설정에서 시드와 레버리지 가져오기
+                    coin_settings = state.get("coin_settings", {}).get(coin_key, {})
+                    current_seed = coin_settings.get("current_seed", coin_settings.get("initial_seed", 1000))
+                    entry_percent = coin_settings.get("entry_percent", 75) / 100
+                    leverage = coin_settings.get("leverage", 10)
 
-                    # 코인별 설정에 따라 포지션 계산
-                    position_nominal = current_seed * entry_percent * leverage
-                    state[coin_key]["position_size"] = position_nominal / current_price
+                    # 코인별 시드에서만 진입
+                    if current_seed > 0:
+                        state[coin_key]["position"] = signal
+                        state[coin_key]["entry_price"] = current_price
+                        state[coin_key]["entry_time"] = datetime.now().isoformat()
+                        state[coin_key]["max_profit_price"] = current_price
 
-                    logger.info(f"[{coin_key.upper()}] {signal.upper()} 진입: {current_price} (시드: ${current_seed}, 진입: {entry_percent*100}%, 레버리지: {leverage}x)")
-                else:
-                    logger.warning(f"[{coin_key.upper()}] 경고: 시드가 부족하여 진입 불가")
+                        # 코인별 설정에 따라 포지션 계산
+                        position_nominal = current_seed * entry_percent * leverage
+                        state[coin_key]["position_size"] = position_nominal / current_price
+
+                        logger.info(f"[{coin_key.upper()}] {signal.upper()} 진입: {current_price} (시드: ${current_seed}, 진입: {entry_percent*100}%, 레버리지: {leverage}x)")
+                    else:
+                        logger.warning(f"[{coin_key.upper()}] 경고: 시드가 부족하여 진입 불가")
     except Exception as e:
         logger.error(f"[ERROR] auto_trade ({coin_key}): {e}")
 
@@ -678,8 +772,8 @@ def update_prices():
                                                 state[coin]["profit"] = (state[coin]["entry_price"] - current_price) * state[coin]["position_size"]
                                                 state[coin]["profit_pct"] = ((state[coin]["entry_price"] - current_price) / state[coin]["entry_price"]) * 100
 
-                                        # 자동 거래 실행
-                                        if state["mode"] == "paper":
+                                        # 자동 거래 실행 (거래 활성화 시에만)
+                                        if state["mode"] == "paper" and state.get("trading_enabled", False):
                                             auto_trade(coin, coin.upper(), state, username)
                                 except Exception as e:
                                     logger.warning(f"[WARN] 코인 업데이트 실패 ({username}/{coin}): {e}")
@@ -703,6 +797,9 @@ def register():
     """회원가입"""
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "유효한 JSON 데이터가 필요합니다"}), 400
+
         username = data.get('username', '').strip()
         password = data.get('password', '').strip()
 
@@ -724,14 +821,14 @@ def register():
         # 사용자 디렉토리 생성
         get_user_data_dir(username)
 
-        # 새 사용자의 초기 상태 생성 (첫 로그인 시에만 BTC/ETH/ADA 기본값 설정)
+        # 새 사용자의 초기 상태 생성
         initial_state = {
             "mode": "paper",
-            "coins": ["btc", "eth", "ada"],
-            "total_seed": 3000
+            "coins": [],
+            "total_seed": 3000,
+            "max_trades": 5,
+            "trading_enabled": False
         }
-        for coin in initial_state["coins"]:
-            initial_state[coin] = create_default_coin_state(coin)
         save_state(initial_state, username)
 
         logger.info(f"[INFO] 새 사용자 등록: {username}")
@@ -751,6 +848,9 @@ def login():
     """로그인"""
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "유효한 JSON 데이터가 필요합니다"}), 400
+
         username = data.get('username', '').strip()
         password = data.get('password', '').strip()
 
@@ -763,12 +863,10 @@ def login():
             return jsonify({"error": "존재하지 않는 사용자명입니다"}), 401
 
         # 비밀번호 확인
-        if users[username]["password_hash"] != hash_password(password):
+        if not verify_password(password, users[username]["password_hash"]):
             return jsonify({"error": "비밀번호가 일치하지 않습니다"}), 401
 
         # JWT 토큰 생성
-        import datetime
-        import time
         now = int(time.time())
         payload = {
             'username': username,
@@ -1032,6 +1130,57 @@ def set_mode(mode):
         return jsonify({"success": True, "mode": state["mode"]})
     return jsonify({"error": "Invalid mode"}), 400
 
+@app.route('/api/trading/start', methods=['POST'])
+@token_required
+def start_trading():
+    """거래 시작"""
+    username = get_current_user() or 'guest'
+    state = load_state(username)
+
+    if not state.get("coins"):
+        return jsonify({"error": "활성 코인이 없습니다"}), 400
+
+    state["trading_enabled"] = True
+    save_state(state, username)
+
+    logger.info(f"[INFO] {username} 거래 시작 - 코인: {state['coins']}")
+    return jsonify({
+        "success": True,
+        "message": "거래가 시작되었습니다",
+        "trading_enabled": True,
+        "coins": state["coins"]
+    })
+
+@app.route('/api/trading/stop', methods=['POST'])
+@token_required
+def stop_trading():
+    """거래 중지"""
+    username = get_current_user() or 'guest'
+    state = load_state(username)
+
+    state["trading_enabled"] = False
+    save_state(state, username)
+
+    logger.info(f"[INFO] {username} 거래 중지")
+    return jsonify({
+        "success": True,
+        "message": "거래가 중지되었습니다",
+        "trading_enabled": False
+    })
+
+@app.route('/api/trading/status', methods=['GET'])
+@token_required
+def trading_status():
+    """거래 상태 조회"""
+    username = get_current_user() or 'guest'
+    state = load_state(username)
+
+    return jsonify({
+        "trading_enabled": state.get("trading_enabled", False),
+        "coins": state.get("coins", []),
+        "mode": state.get("mode", "paper")
+    })
+
 @app.route('/api/reset', methods=['POST'])
 @token_required
 def reset_all():
@@ -1183,9 +1332,30 @@ def get_global_settings():
     """전역 설정 조회"""
     username = get_current_user() or 'guest'
     state = load_state(username)
+
+    total_seed = state.get("total_seed", 3000)
+    max_trades = state.get("max_trades", 3)
+    per_trade_amount = total_seed / max_trades if max_trades > 0 else 0
+
+    # 캐시된 코인 확인 (24시간 유지)
+    cached = load_cached_coins()
+
+    if not cached:
+        available_coins = get_top_coins_by_volume()
+    else:
+        available_coins = cached
+
+    # USDC 제외 (excluded 리스트 기반)
+    excluded = ['USDC', 'USDT', 'BUSD', 'DAI', 'TUSD', 'FDUSD']
+    if available_coins:
+        available_coins = [c for c in available_coins if c.upper() not in excluded]
+
     return jsonify({
-        "total_seed": state.get("total_seed", 3000),
-        "coins": state.get("coins", [])
+        "total_seed": total_seed,
+        "max_trades": max_trades,
+        "per_trade_amount": round(per_trade_amount, 2),
+        "coins": state.get("coins", []),
+        "available_coins": available_coins
     })
 
 @app.route('/api/global-settings', methods=['POST'])
@@ -1196,15 +1366,39 @@ def set_global_settings():
     state = load_state(username)
     data = request.get_json()
 
+    if not data:
+        return jsonify({"error": "유효한 JSON 데이터가 필요합니다"}), 400
+
     if "total_seed" in data:
         state["total_seed"] = float(data["total_seed"])
+
+    if "max_trades" in data:
+        max_trades = int(data["max_trades"])
+        if max_trades < 1 or max_trades > 20:
+            return jsonify({"error": "거래허용 건수는 1~20 사이여야 합니다"}), 400
+        state["max_trades"] = max_trades
+
+    # 코인 선택 (사용자가 직접 선택한 경우)
+    if "coins" in data:
+        selected_coins = data.get("coins", [])
+        if len(selected_coins) > state.get("max_trades", 5):
+            return jsonify({
+                "error": f"선택한 코인({len(selected_coins)})이 거래허용 건수({state.get('max_trades', 5)})를 초과합니다"
+            }), 400
+        state["coins"] = selected_coins
 
     # 상태 저장
     save_state(state, username)
 
+    total_seed = state.get("total_seed", 3000)
+    max_trades = state.get("max_trades", 5)
+    per_trade_amount = total_seed / max_trades if max_trades > 0 else 0
+
     return jsonify({
         "success": True,
-        "total_seed": state.get("total_seed", 3000)
+        "total_seed": total_seed,
+        "max_trades": max_trades,
+        "per_trade_amount": round(per_trade_amount, 2)
     })
 
 @app.route('/api/calendar/<int:year>/<int:month>', methods=['GET'])
@@ -1227,8 +1421,8 @@ def get_calendar_data(year, month):
                     daily_profit[entry_date] = {'profit': 0, 'count': 0}
                 daily_profit[entry_date]['profit'] += trade.get('profit', 0)
                 daily_profit[entry_date]['count'] += 1
-        except:
-            pass
+        except (ValueError, TypeError, KeyError) as e:
+            logger.warning(f"[WARN] 거래 날짜 파싱 실패: {e}")
 
     return jsonify({
         "year": year,
@@ -1249,8 +1443,8 @@ def get_trades_by_date(date):
             entry_date = datetime.fromisoformat(trade['entry_time']).strftime('%Y-%m-%d')
             if entry_date == date:
                 date_trades.append(trade)
-        except:
-            pass
+        except (ValueError, TypeError, KeyError) as e:
+            logger.warning(f"[WARN] 거래 날짜 필터링 실패: {e}")
 
     return jsonify({"date": date, "trades": date_trades})
 
@@ -1262,10 +1456,16 @@ def add_coin():
     state = load_state(username)
     try:
         data = request.json
-        symbol = data.get('symbol', '').lower()
+        if not data:
+            return jsonify({"success": False, "error": "유효한 JSON 데이터가 필요합니다"}), 400
+
+        symbol = data.get('symbol', '').lower().strip()
 
         if not symbol:
             return jsonify({"success": False, "error": "심볼을 입력해주세요"}), 400
+
+        if not symbol.isalpha():
+            return jsonify({"success": False, "error": "심볼은 영문만 가능합니다"}), 400
 
         if symbol in state["coins"]:
             return jsonify({"success": False, "error": "이미 추가된 코인입니다"}), 400
@@ -1291,7 +1491,10 @@ def remove_coin():
     state = load_state(username)
     try:
         data = request.json
-        symbol = data.get('symbol', '').lower()
+        if not data:
+            return jsonify({"success": False, "error": "유효한 JSON 데이터가 필요합니다"}), 400
+
+        symbol = data.get('symbol', '').lower().strip()
 
         if not symbol:
             return jsonify({"success": False, "error": "심볼을 입력해주세요"}), 400
