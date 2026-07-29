@@ -1,0 +1,125 @@
+[2026-07-23 22:36:17,192] INFO: [INIT] Loaded secrets from: /home/protre/codex-secrets/secrets.env
+[2026-07-23 22:36:17,192] INFO: [INIT] Bybit API 연결 성공
+[2026-07-23 22:36:17,199] INFO: [INIT] 백그라운드 가격 업데이트 시작
+[2026-07-23 22:36:17,199] INFO: [INIT] 매일 자동 코인 업데이트 시작 (자정마다 백테스팅 수행)
+[2026-07-23 22:36:17,199] INFO: [INIT] 가격 업데이트 + 자동 코인 선택 스레드 시작
+[2026-07-23 22:36:17,200] INFO: [INIT] Bybit Bot 시작 - 사용자 로그인 대기 중
+ * Serving Flask app 'app'
+ * Debug mode: off
+[2026-07-23 22:36:17,303] INFO: [HBAR] 거래 종료: Stop Loss, 수익: $-112.50
+[2026-07-23 22:36:17,893] INFO: [WLD] SHORT 진입: 0.3781 (시드: $1000, 진입: 75.0%, 레버리지: 10x)
+[2026-07-23 22:36:18,377] INFO: [ENA] SHORT 진입: 0.08938 (시드: $1000, 진입: 75.0%, 레버리지: 10x)
+[2026-07-23 22:36:18,786] INFO: [WLFI] 거래 종료: Stop Loss, 수익: $-186.51
+[2026-07-23 22:58:12,648] INFO: [AAVE] SHORT 진입: 96.09 (시드: $1000, 진입: 75.0%, 레버리지: 10x)
+[2026-07-23 23:01:47,885] INFO: [HBAR] SHORT 진입: 0.07188 (시드: $887.4999999999994, 진입: 75.0%, 레버리지: 10x)
+[2026-07-23 23:12:36,728] INFO: [INFO] 새 코인 추가: ETRH, 현재 코인: ['wlfi', 'etrh']
+[2026-07-23 23:12:44,030] INFO: [INFO] 코인 제거: ETRH, 현재 코인: ['wlfi']
+[2026-07-23 23:12:47,574] INFO: [INFO] 새 코인 추가: ETH, 현재 코인: ['wlfi', 'eth']
+[2026-07-23 23:12:55,890] INFO: [ETH] SHORT 진입: 1902.93 (시드: $1000, 진입: 75.0%, 레버리지: 10x)
+[2026-07-23 23:15:01,013] INFO: [INFO] 새 코인 추가: BTC, 현재 코인: ['wlfi', 'eth', 'btc']
+[2026-07-23 23:15:09,899] INFO: [INFO] 새 코인 추가: ADA, 현재 코인: ['wlfi', 'eth', 'btc', 'ada']
+[2026-07-23 23:15:10,698] INFO: [BTC] SHORT 진입: 65042.3 (시드: $1000, 진입: 75.0%, 레버리지: 10x)
+[2026-07-23 23:15:10,934] INFO: [ADA] SHORT 진입: 0.1714 (시드: $1000, 진입: 75.0%, 레버리지: 10x)
+[2026-07-23 23:15:15,749] INFO: [INFO] 새 코인 추가: NEAR, 현재 코인: ['wlfi', 'eth', 'btc', 'ada', 'near']
+[2026-07-23 23:15:19,981] INFO: [INFO] 새 코인 추가: HBAR, 현재 코인: ['wlfi', 'eth', 'btc', 'ada', 'near', 'hbar']
+[2026-07-23 23:15:49,082] INFO: [INFO] 새 코인 추가: MORPHO, 현재 코인: ['wlfi', 'eth', 'btc', 'ada', 'near', 'hbar', 'morpho']
+[2026-07-23 23:36:58,871] INFO: [HBAR] SHORT 진입: 0.07189 (시드: $1000, 진입: 75.0%, 레버리지: 10x)
+[2026-07-23 23:50:30,530] INFO: [XRP] 거래 종료: Take Profit, 수익: $152.34
+[2026-07-23 23:50:30,709] INFO: [XRP] SHORT 진입: 1.1093 (시드: $1152.3447849509855, 진입: 75.0%, 레버리지: 10x)
+[2026-07-24 00:00:00,099] INFO: [BACKTEST] 최적 코인 선별 시작 (TOP 10 백테스팅 중...)
+[2026-07-24 00:00:53,467] INFO: [BACKTEST] TOP 10 선택 완료 (거래량 범위: $3M-60M): ['hype', 'sol', 'brl', 'ena', 'xrp', 'btcusdc', 'aave', 'link', 'wld', 'inj']
+[2026-07-24 00:00:54,334] ERROR: $HYPE-USD: possibly delisted; no price data found  (period=180d)
+[2026-07-24 00:00:54,336] ERROR: 
+1 Failed download:
+[2026-07-24 00:00:54,336] ERROR: ['HYPE-USD']: possibly delisted; no price data found  (period=180d)
+[2026-07-24 00:00:54,338] WARNING: [BACKTEST] hype: yfinance 데이터 부족
+[2026-07-24 00:00:54,338] INFO: [BACKTEST_FAIL] hype: 0.00% ROI ❌ (1000% 미만)
+[2026-07-24 00:00:55,872] INFO: [BACKTEST] sol: ROI 777.08%, Trades: 235
+[2026-07-24 00:00:55,872] INFO: [BACKTEST_FAIL] sol: 777.08% ROI ❌ (1000% 미만)
+[2026-07-24 00:00:57,710] ERROR: HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: BRL-USD"}}}
+[2026-07-24 00:00:58,840] ERROR: $BRL-USD: possibly delisted; no price data found  (period=180d) (Yahoo error = "No data found, symbol may be delisted")
+[2026-07-24 00:00:58,845] ERROR: 
+1 Failed download:
+[2026-07-24 00:00:58,845] ERROR: ['BRL-USD']: possibly delisted; no price data found  (period=180d) (Yahoo error = "No data found, symbol may be delisted")
+[2026-07-24 00:00:58,847] WARNING: [BACKTEST] brl: yfinance 데이터 부족
+[2026-07-24 00:00:58,847] INFO: [BACKTEST_FAIL] brl: 0.00% ROI ❌ (1000% 미만)
+[2026-07-24 00:00:59,429] INFO: [BACKTEST] ena: ROI 36263.79%, Trades: 324
+[2026-07-24 00:00:59,430] INFO: [BACKTEST_PASS] ena: 36263.79% ROI ✅
+[2026-07-24 00:01:00,021] INFO: [BACKTEST] xrp: ROI 3693.31%, Trades: 207
+[2026-07-24 00:01:00,022] INFO: [BACKTEST_PASS] xrp: 3693.31% ROI ✅
+[2026-07-24 00:01:01,626] ERROR: HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: BTCUSDC-USD"}}}
+[2026-07-24 00:01:02,451] ERROR: $BTCUSDC-USD: possibly delisted; no price data found  (period=180d) (Yahoo error = "No data found, symbol may be delisted")
+[2026-07-24 00:01:02,456] ERROR: 
+1 Failed download:
+[2026-07-24 00:01:02,456] ERROR: ['BTCUSDC-USD']: possibly delisted; no price data found  (period=180d) (Yahoo error = "No data found, symbol may be delisted")
+[2026-07-24 00:01:02,457] WARNING: [BACKTEST] btcusdc: yfinance 데이터 부족
+[2026-07-24 00:01:02,457] INFO: [BACKTEST_FAIL] btcusdc: 0.00% ROI ❌ (1000% 미만)
+[2026-07-24 00:01:03,141] INFO: [BACKTEST] aave: ROI 52929.46%, Trades: 280
+[2026-07-24 00:01:03,141] INFO: [BACKTEST_PASS] aave: 52929.46% ROI ✅
+[2026-07-24 00:01:03,876] INFO: [BACKTEST] link: ROI 293.03%, Trades: 231
+[2026-07-24 00:01:03,876] INFO: [BACKTEST_FAIL] link: 293.03% ROI ❌ (1000% 미만)
+[2026-07-24 00:01:04,508] INFO: [BACKTEST] wld: ROI 622885.99%, Trades: 370
+[2026-07-24 00:01:04,508] INFO: [BACKTEST_PASS] wld: 622885.99% ROI ✅
+[2026-07-24 00:01:05,076] INFO: [BACKTEST] inj: ROI 1443.74%, Trades: 305
+[2026-07-24 00:01:05,076] INFO: [BACKTEST_PASS] inj: 1443.74% ROI ✅
+[2026-07-24 00:01:05,076] INFO: [OPTIMAL_COINS_BACKTEST] 최종 선택 코인 (5개): ['wld', 'aave', 'ena', 'xrp', 'inj'] (평균 ROI: 143443.26%)
+[2026-07-24 00:01:05,079] INFO: [ADD_COIN] guest: wld 추가
+[2026-07-24 00:01:05,079] INFO: [ADD_COIN] guest: aave 추가
+[2026-07-24 00:01:05,079] INFO: [REMOVE_COIN] guest: wld 제거 (거래 완료)
+[2026-07-24 00:01:05,079] INFO: [REMOVE_COIN] guest: aave 제거 (거래 완료)
+[2026-07-24 00:01:05,090] INFO: [UPDATE_COINS] guest: ['hbar', 'eth', 'btc']
+[2026-07-24 00:01:05,090] INFO: [REMOVE_COIN] protre: inj 제거 (거래 완료)
+[2026-07-24 00:01:05,091] INFO: [UPDATE_COINS] protre: ['wld', 'aave', 'ena', 'xrp']
+[2026-07-24 00:01:05,091] INFO: [REMOVE_COIN] protre2: wlfi 제거 (거래 완료)
+[2026-07-24 00:01:05,091] INFO: [REMOVE_COIN] protre2: near 제거 (거래 완료)
+[2026-07-24 00:01:05,091] INFO: [REMOVE_COIN] protre2: morpho 제거 (거래 완료)
+[2026-07-24 00:01:05,091] INFO: [UPDATE_COINS] protre2: ['eth', 'btc', 'ada', 'hbar']
+[2026-07-24 01:16:15,588] INFO: [INFO] 사용자 로그인: protre
+[2026-07-24 01:17:06,988] INFO: [INFO] 사용자 로그인: protre2
+[2026-07-24 03:21:36,328] INFO: [ETH] 거래 종료: Take Profit, 수익: $151.34
+[2026-07-24 03:21:36,481] INFO: [ETH] SHORT 진입: 1876.24 (시드: $1151.341076203209, 진입: 75.0%, 레버리지: 10x)
+[2026-07-24 05:11:48,892] INFO: [WLD] 거래 종료: Stop Loss, 수익: $-112.50
+[2026-07-24 05:26:39,233] INFO: [WLD] LONG 진입: 0.3864 (시드: $887.5000000000011, 진입: 75.0%, 레버리지: 10x)
+[2026-07-24 07:34:01,442] INFO: [INFO] 사용자 로그인: protre
+[2026-07-24 07:36:58,673] INFO: [INFO] 사용자 로그인: protre2
+[2026-07-24 07:48:31,218] INFO: [INFO] 사용자 로그인: protre
+[2026-07-24 07:52:41,364] INFO: [INFO] 사용자 로그인: protre2
+[2026-07-24 08:05:31,527] INFO: [AUTO_SELECT] protre이(가) 자동 코인 선택 요청
+[2026-07-24 08:05:31,527] INFO: [BACKTEST] 최적 코인 선별 시작 (TOP 10 백테스팅 중...)
+[2026-07-24 08:06:16,793] INFO: [BACKTEST] TOP 10 선택 완료 (거래량 범위: $3M-60M): ['hype', 'sol', 'brl', 'btcusdc', 'ena', 'xrp', 'aave', 'link', 'inj', 'doge']
+[2026-07-24 08:06:17,076] ERROR: $HYPE-USD: possibly delisted; no price data found  (period=180d)
+[2026-07-24 08:06:17,085] ERROR: 
+1 Failed download:
+[2026-07-24 08:06:17,085] ERROR: ['HYPE-USD']: possibly delisted; no price data found  (period=180d)
+[2026-07-24 08:06:17,087] WARNING: [BACKTEST] hype: yfinance 데이터 부족
+[2026-07-24 08:06:17,087] INFO: [BACKTEST_FAIL] hype: 0.00% ROI ❌ (1000% 미만)
+[2026-07-24 08:06:17,659] INFO: [BACKTEST] sol: ROI 777.08%, Trades: 235
+[2026-07-24 08:06:17,659] INFO: [BACKTEST_FAIL] sol: 777.08% ROI ❌ (1000% 미만)
+[2026-07-24 08:06:18,358] ERROR: $BRL-USD: possibly delisted; no price data found  (period=180d) (Yahoo error = "No data found, symbol may be delisted")
+[2026-07-24 08:06:18,366] ERROR: 
+1 Failed download:
+[2026-07-24 08:06:18,367] ERROR: ['BRL-USD']: possibly delisted; no price data found  (period=180d) (Yahoo error = "No data found, symbol may be delisted")
+[2026-07-24 08:06:18,368] WARNING: [BACKTEST] brl: yfinance 데이터 부족
+[2026-07-24 08:06:18,368] INFO: [BACKTEST_FAIL] brl: 0.00% ROI ❌ (1000% 미만)
+[2026-07-24 08:06:19,195] ERROR: $BTCUSDC-USD: possibly delisted; no price data found  (period=180d) (Yahoo error = "No data found, symbol may be delisted")
+[2026-07-24 08:06:19,197] ERROR: 
+1 Failed download:
+[2026-07-24 08:06:19,197] ERROR: ['BTCUSDC-USD']: possibly delisted; no price data found  (period=180d) (Yahoo error = "No data found, symbol may be delisted")
+[2026-07-24 08:06:19,199] WARNING: [BACKTEST] btcusdc: yfinance 데이터 부족
+[2026-07-24 08:06:19,199] INFO: [BACKTEST_FAIL] btcusdc: 0.00% ROI ❌ (1000% 미만)
+[2026-07-24 08:06:19,698] INFO: [BACKTEST] ena: ROI 36263.79%, Trades: 324
+[2026-07-24 08:06:19,698] INFO: [BACKTEST_PASS] ena: 36263.79% ROI ✅
+[2026-07-24 08:06:20,201] INFO: [BACKTEST] xrp: ROI 3693.31%, Trades: 207
+[2026-07-24 08:06:20,201] INFO: [BACKTEST_PASS] xrp: 3693.31% ROI ✅
+[2026-07-24 08:06:20,697] INFO: [BACKTEST] aave: ROI 52929.46%, Trades: 280
+[2026-07-24 08:06:20,698] INFO: [BACKTEST_PASS] aave: 52929.46% ROI ✅
+[2026-07-24 08:06:21,289] INFO: [BACKTEST] link: ROI 293.03%, Trades: 231
+[2026-07-24 08:06:21,289] INFO: [BACKTEST_FAIL] link: 293.03% ROI ❌ (1000% 미만)
+[2026-07-24 08:06:21,773] INFO: [BACKTEST] inj: ROI 1443.74%, Trades: 305
+[2026-07-24 08:06:21,773] INFO: [BACKTEST_PASS] inj: 1443.74% ROI ✅
+[2026-07-24 08:06:22,409] INFO: [BACKTEST] doge: ROI 599.51%, Trades: 233
+[2026-07-24 08:06:22,409] INFO: [BACKTEST_FAIL] doge: 599.51% ROI ❌ (1000% 미만)
+[2026-07-24 08:06:22,409] INFO: [OPTIMAL_COINS_BACKTEST] 최종 선택 코인 (4개): ['aave', 'ena', 'xrp', 'inj'] (평균 ROI: 23582.58%)
+[2026-07-24 08:06:22,410] INFO: [AUTO_SELECT] protre 완료: ['inj'] 추가됨 (총 4개 선택)
+[2026-07-24 08:09:07,701] INFO: [INFO] 새 코인 추가: DOGE, 현재 코인: ['wld', 'aave', 'ena', 'xrp', 'inj', 'doge']
+[2026-07-24 08:09:15,061] INFO: [DOGE] SHORT 진입: 0.06947 (시드: $1000, 진입: 75.0%, 레버리지: 10x)
