@@ -1245,17 +1245,34 @@ def get_trades_by_date(date):
     """특정 날짜의 거래 내역 조회"""
     username = get_current_user() or 'guest'
     trades = load_trades(username)
+    state = load_state(username)
 
+    initial_seed = state.get('total_seed', 0)
     date_trades = []
-    for trade in trades:
+    cumulative_profit = 0
+
+    sorted_trades = sorted(trades, key=lambda x: x.get('entry_time', ''))
+    for trade in sorted_trades:
         try:
             entry_date = datetime.fromisoformat(trade['entry_time']).strftime('%Y-%m-%d')
+            profit = trade.get('profit', 0)
+
             if entry_date == date:
                 date_trades.append(trade)
+
+            if entry_date <= date:
+                cumulative_profit += profit
+
         except:
             pass
 
-    return jsonify({"date": date, "trades": date_trades})
+    daily_total_seed = initial_seed + cumulative_profit
+    return jsonify({
+        "date": date,
+        "trades": date_trades,
+        "daily_total_seed": daily_total_seed,
+        "cumulative_profit": cumulative_profit
+    })
 
 @app.route('/api/coins/add', methods=['POST'])
 @token_required
