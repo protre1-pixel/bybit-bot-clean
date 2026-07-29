@@ -1427,10 +1427,16 @@ def get_trades_calendar():
     trades = load_trades(username)
     state = load_state(username)
 
-    # 날짜별로 그룹화
-    calendar_data = {}
+    initial_seed = state.get('total_seed', 0)
 
-    for trade in trades:
+    # 날짜별로 그룹화 + 누적 수익 계산
+    calendar_data = {}
+    cumulative_profit = 0
+
+    # 날짜순으로 정렬 (exit_time 기준)
+    sorted_trades = sorted(trades, key=lambda x: x.get('exit_time', ''))
+
+    for trade in sorted_trades:
         # exit_time 기준으로 날짜 추출
         exit_time_str = trade.get('exit_time', '')
         if exit_time_str:
@@ -1439,29 +1445,34 @@ def get_trades_calendar():
             if date_str not in calendar_data:
                 calendar_data[date_str] = {
                     'date': date_str,
-                    'total_trades': 0,
                     'win_trades': 0,
                     'loss_trades': 0,
                     'total_profit': 0,
+                    'cumulative_profit': 0,
+                    'daily_total_seed': initial_seed,  # 그날의 총시드 (누적 수익 포함)
                     'trades': []
                 }
 
             # 통계 업데이트
-            calendar_data[date_str]['total_trades'] += 1
             profit = trade.get('profit', 0)
             calendar_data[date_str]['total_profit'] += profit
+            cumulative_profit += profit
 
             if profit > 0:
                 calendar_data[date_str]['win_trades'] += 1
             else:
                 calendar_data[date_str]['loss_trades'] += 1
 
+            # 누적 수익 및 그날의 총시드 업데이트
+            calendar_data[date_str]['cumulative_profit'] = cumulative_profit
+            calendar_data[date_str]['daily_total_seed'] = initial_seed + cumulative_profit
+
             calendar_data[date_str]['trades'].append(trade)
 
     return jsonify({
         "success": True,
         "data": calendar_data,
-        "total_seed": state.get('total_seed', 0)
+        "total_seed": initial_seed
     })
 
 @app.route('/api/trades/calendar-detail/<date_str>', methods=['GET'])
@@ -1470,19 +1481,37 @@ def get_trades_calendar_detail(date_str):
     """특정 날짜의 거래 내역 (달력용)"""
     username = get_current_user() or 'guest'
     trades = load_trades(username)
+    state = load_state(username)
 
+    initial_seed = state.get('total_seed', 0)
     trades_on_date = []
-    for trade in trades:
+    cumulative_profit = 0
+
+    # 모든 거래를 시간순으로 처리해서 누적 수익 계산
+    sorted_trades = sorted(trades, key=lambda x: x.get('exit_time', ''))
+
+    for trade in sorted_trades:
         exit_time_str = trade.get('exit_time', '')
         if exit_time_str:
             trade_date = exit_time_str.split('T')[0]
+            profit = trade.get('profit', 0)
+
             if trade_date == date_str:
                 trades_on_date.append(trade)
+
+            # 누적 수익 계산 (해당 날짜 포함 이전까지)
+            if trade_date <= date_str:
+                cumulative_profit += profit
+
+    # 해당 날짜의 누적 수익을 반영한 총시드
+    daily_total_seed = initial_seed + cumulative_profit
 
     return jsonify({
         "success": True,
         "date": date_str,
-        "trades": trades_on_date
+        "trades": trades_on_date,
+        "daily_total_seed": daily_total_seed,
+        "cumulative_profit": cumulative_profit
     })
 
 if __name__ == '__main__':

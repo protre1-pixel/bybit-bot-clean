@@ -1,0 +1,150 @@
+{
+  "mode": "paper",
+  "coins": [
+    "eth",
+    "ada",
+    "hbar",
+    "near",
+    "wlfi",
+    "morpho"
+  ],
+  "total_seed": 4535.474720717305,
+  "ada": {
+    "position": "long",
+    "entry_price": 0.1626,
+    "entry_time": "2026-07-29T13:26:56.556069",
+    "current_price": 0.1641,
+    "margin": 1255.885867173903,
+    "leverage": 10,
+    "position_size": 57928.31490654535,
+    "profit": 86.8924723598181,
+    "profit_pct": 0.9225092250922518,
+    "max_profit_price": 0.165,
+    "timeframe": 60,
+    "position_ratio": 75,
+    "tp": 2.0,
+    "sl": 1.5,
+    "last_close_time": "2026-07-29T13:21:04.126050"
+  },
+  "sei": {
+    "position": null,
+    "entry_price": null,
+    "entry_time": null,
+    "current_price": 0.04651,
+    "margin": 0,
+    "leverage": 10,
+    "position_size": 0,
+    "profit": 0,
+    "profit_pct": 0,
+    "max_profit_price": null,
+    "timeframe": 60,
+    "position_ratio": 75,
+    "tp": 2.0,
+    "sl": 1.5
+  },
+  "hbar": {
+    "position": "long",
+    "entry_price": 0.06867,
+    "entry_time": "2026-07-29T01:04:04.734340",
+    "current_price": 0.06854,
+    "margin": 1355.1768278705388,
+    "leverage": 10,
+    "position_size": 148009.7016022869,
+    "profit": -19.241261208296,
+    "profit_pct": -0.18931119848549768,
+    "max_profit_price": 0.06921,
+    "timeframe": 60,
+    "position_ratio": 75,
+    "tp": 2.0,
+    "sl": 1.5,
+    "last_close_time": "2026-07-29T01:04:04.509596"
+  },
+  "wlfi": {
+    "position": "short",
+    "entry_price": 0.05456,
+    "entry_time": "2026-07-29T08:04:56.358345",
+    "current_price": 0.05483,
+    "margin": 1337.8309052653076,
+    "leverage": 10,
+    "position_size": 248693.9158904221,
+    "profit": -67.14735729041382,
+    "profit_pct": -0.4948680351906148,
+    "max_profit_price": 0.0537,
+    "timeframe": 60,
+    "position_ratio": 75,
+    "tp": 2.0,
+    "sl": 1.5,
+    "last_close_time": "2026-07-28T01:10:05.775507"
+  },
+  "eth": {
+    "position": null,
+    "entry_price": null,
+    "entry_time": null,
+    "current_price": 1915.95,
+    "margin": 790.6356306805244,
+    "leverage": 10,
+    "position_size": 0,
+    "profit": 0,
+    "profit_pct": 0,
+    "max_profit_price": null,
+    "timeframe": 60,
+    "position_ratio": 75,
+    "tp": 2.0,
+    "sl": 1.5,
+    "last_close_time": "2026-07-29T12:55:39.038454"
+  },
+  "coin_settings": {
+    "wlfi": {
+      "current_seed": 1809.1653401308572
+    },
+    "ada": {
+      "current_seed": 1255.885867173903
+    },
+    "eth": {
+      "current_seed": 790.6356306805244
+    },
+    "morpho": {
+      "current_seed": 458.05312458820003
+    },
+    "near": {
+      "current_seed": 1595.420875526252
+    },
+    "hbar": {
+      "current_seed": 1355.1768278705388
+    }
+  },
+  "near": {
+    "position": "short",
+    "entry_price": 1.615,
+    "entry_time": "2026-07-29T12:30:06.558525",
+    "current_price": 1.601,
+    "margin": 1595.420875526252,
+    "leverage": 10,
+    "position_size": 7409.0752733417285,
+    "profit": 103.72705382678429,
+    "profit_pct": 0.8668730650154807,
+    "max_profit_price": 1.591,
+    "timeframe": 60,
+    "position_ratio": 75,
+    "tp": 2.0,
+    "sl": 1.5,
+    "last_close_time": "2026-07-29T12:30:05.996373"
+  },
+  "morpho": {
+    "position": "long",
+    "entry_price": 2.021,
+    "entry_time": "2026-07-29T04:05:47.328284",
+    "current_price": 2.002,
+    "margin": 458.05312458820003,
+    "leverage": 10,
+    "position_size": 1699.850783974023,
+    "profit": -32.297164895506654,
+    "profit_pct": -0.940128649183579,
+    "max_profit_price": 2.054,
+    "timeframe": 60,
+    "position_ratio": 75,
+    "tp": 2.0,
+    "sl": 1.5,
+    "last_close_time": "2026-07-29T04:05:47.094164"
+  }
+}

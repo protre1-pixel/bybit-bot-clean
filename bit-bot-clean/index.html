@@ -355,7 +355,6 @@
             <div class="sidebar-logo">🤖 Bybit Bot</div>
             <ul class="sidebar-menu">
                 <li class="menu-item active" onclick="switchPage('dashboard')">📊 대시보드</li>
-                <li class="menu-item" onclick="switchPage('calendar')">📅 거래달력</li>
                 <li class="menu-item" onclick="switchPage('trades')">📋 거래기록</li>
                 <li class="menu-item" onclick="switchPage('stats')">📈 통계</li>
                 <li class="menu-item" onclick="switchPage('settings')">⚙️ 설정</li>
@@ -423,55 +422,6 @@
                 </div>
             </div>
 
-            <!-- CALENDAR PAGE -->
-            <div id="calendar" class="page">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-                    <h2 style="margin: 0;">📅 거래 달력</h2>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-primary" onclick="prevMonth()" style="padding: 8px 16px;">◀ 이전</button>
-                        <span id="calendar-month" style="min-width: 150px; text-align: center; font-weight: 600;">2026년 7월</span>
-                        <button class="btn btn-primary" onclick="nextMonth()" style="padding: 8px 16px;">다음 ▶</button>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                    <div class="stat-card">
-                        <div class="stat-label">이번 달 익절/손절</div>
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <div style="font-size: 20px; font-weight: 600;">
-                                <span style="color: var(--success);" id="calendar-win-trades">0</span> /
-                                <span style="color: var(--danger);" id="calendar-loss-trades">0</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">수익금 / 총시드</div>
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <div class="stat-value" id="calendar-total-profit">$0.00</div>
-                            <div style="font-size: 14px; color: var(--text-secondary);" id="calendar-seed-display">/ $0.00</div>
-                            <div style="font-size: 14px; color: var(--primary); font-weight: 600;" id="calendar-roi-pct">0.00%</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="table-container" style="margin-top: 30px;">
-                    <div class="table-header">거래 달력</div>
-                    <div style="padding: 20px;">
-                        <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;">
-                            <!-- 요일 헤더 -->
-                            <div style="text-align: center; font-weight: 600; padding: 10px; color: var(--text-secondary);">일</div>
-                            <div style="text-align: center; font-weight: 600; padding: 10px; color: var(--text-secondary);">월</div>
-                            <div style="text-align: center; font-weight: 600; padding: 10px; color: var(--text-secondary);">화</div>
-                            <div style="text-align: center; font-weight: 600; padding: 10px; color: var(--text-secondary);">수</div>
-                            <div style="text-align: center; font-weight: 600; padding: 10px; color: var(--text-secondary);">목</div>
-                            <div style="text-align: center; font-weight: 600; padding: 10px; color: var(--text-secondary);">금</div>
-                            <div style="text-align: center; font-weight: 600; padding: 10px; color: var(--text-secondary);">토</div>
-                            <!-- 날짜들이 여기 삽입됨 -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- TRADES PAGE -->
             <div id="trades" class="page">
                 <div class="table-container">
@@ -479,8 +429,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>진입시간</th>
-                                <th>매도시간</th>
+                                <th>날짜</th>
                                 <th>코인</th>
                                 <th>타입</th>
                                 <th>진입가</th>
@@ -559,11 +508,16 @@
                             <input type="text" id="coin-symbol" placeholder="코인 심볼 (예: BTC, ETH)" style="flex: 1;">
                             <button type="button" class="btn btn-primary" onclick="addCoin()" style="width: auto;">추가</button>
                         </div>
-                        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                            <button type="button" class="btn btn-success" onclick="autoSelectCoins()" style="flex: 1; background-color: var(--warning);">🤖 최적 코인 자동 선택</button>
-                        </div>
                         <div id="coins-list" style="display: grid; gap: 8px;">
                             <p class="loading">추가된 코인이 없습니다</p>
+                        </div>
+                    </div>
+
+                    <!-- 코인별 상세 설정 -->
+                    <div class="stat-card">
+                        <h2 style="margin-bottom: 20px;">⚙️ 코인 상세 설정</h2>
+                        <div id="coin-settings-container" style="display: grid; gap: 20px;">
+                            <p class="loading">설정할 코인을 선택하세요</p>
                         </div>
                     </div>
 
@@ -577,98 +531,6 @@
             </div>
         </main>
     </div>
-
-    <!-- 코인 설정 모달 -->
-    <div id="coin-settings-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>⚙️ 코인 상세 설정</h2>
-                <button class="modal-close" onclick="closeCoinSettingsModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modal-body">
-                <p class="loading">로딩 중...</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- 거래 상세 모달 -->
-    <div id="trades-detail-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-trade-date">거래 내역</h2>
-                <button class="modal-close" onclick="closeTradesDetailModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="trades-detail-body">
-                <p class="loading">로딩 중...</p>
-            </div>
-        </div>
-    </div>
-
-    <style>
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: var(--bg-card);
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            border: 1px solid var(--border);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            background: var(--bg-card);
-        }
-
-        .modal-header h2 {
-            margin: 0;
-            color: var(--text-primary);
-            font-size: 20px;
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 28px;
-            cursor: pointer;
-            padding: 0;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.2s;
-        }
-
-        .modal-close:hover {
-            color: var(--text-primary);
-        }
-
-        .modal-body {
-            padding: 20px;
-        }
-    </style>
 
     <script>
         // ===== 토큰 관리 =====
@@ -702,14 +564,12 @@
 
             const titles = {
                 'dashboard': '대시보드',
-                'calendar': '거래달력',
                 'trades': '거래기록',
                 'stats': '통계',
                 'settings': '설정'
             };
             document.getElementById('page-title').textContent = titles[pageName];
 
-            if (pageName === 'calendar') loadCalendar();
             if (pageName === 'trades') loadTrades();
             if (pageName === 'stats') loadStats();
             if (pageName === 'settings') loadSettings();
@@ -737,32 +597,28 @@
                     if (data[coin]) {
                         const coinData = data[coin];
                         const hasPosition = coinData.position !== null;
+                        const positionType = hasPosition ? coinData.position.toUpperCase() : '-';
+                        const entryPrice = hasPosition ? `$${coinData.entry_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}` : '-';
+                        const currentPrice = `$${coinData.current_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}`;
+                        const profit = hasPosition ? `${coinData.profit >= 0 ? '+' : ''}$${coinData.profit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-';
+                        const profitPct = hasPosition ? `${coinData.profit_pct.toFixed(2)}%` : '-';
+                        const sellBtn = hasPosition ? `<button class="btn btn-danger" onclick="sellCoin('${coin}')" style="padding: 4px 12px; font-size: 12px;">매도</button>` : '-';
 
-                        // 포지션이 있는 코인만 테이블에 표시
-                        if (hasPosition) {
-                            const positionType = coinData.position.toUpperCase();
-                            const entryPrice = `$${coinData.entry_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}`;
-                            const currentPrice = `$${coinData.current_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}`;
-                            const profit = `${coinData.profit >= 0 ? '+' : ''}$${coinData.profit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                            const profitPct = `${coinData.profit_pct.toFixed(2)}%`;
-                            const sellBtn = `<button class="btn btn-danger" onclick="sellCoin('${coin}')" style="padding: 4px 12px; font-size: 12px;">매도</button>`;
-
-                            rows.push(`
-                                <tr>
-                                    <td>${coin.toUpperCase()}</td>
-                                    <td><span class="badge ${coinData.position}">${positionType}</span></td>
-                                    <td>${entryPrice}</td>
-                                    <td>${currentPrice}</td>
-                                    <td>${profit}</td>
-                                    <td>${profitPct}</td>
-                                    <td>${sellBtn}</td>
-                                </tr>
-                            `);
-                        }
+                        rows.push(`
+                            <tr>
+                                <td>${coin.toUpperCase()}</td>
+                                <td>${hasPosition ? `<span class="badge ${coinData.position}">${positionType}</span>` : positionType}</td>
+                                <td>${entryPrice}</td>
+                                <td>${currentPrice}</td>
+                                <td>${profit}</td>
+                                <td>${profitPct}</td>
+                                <td>${sellBtn}</td>
+                            </tr>
+                        `);
                     }
                 }
 
-                tbody.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="7" class="loading">현재 열린 포지션이 없습니다</td></tr>';
+                tbody.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="7" class="loading">추가된 코인이 없습니다</td></tr>';
             } catch (error) {
                 console.error('대시보드 업데이트 실패:', error);
             }
@@ -778,7 +634,6 @@
                 const rows = trades.reverse().slice(0, 100).map(trade => `
                     <tr>
                         <td>${new Date(trade.entry_time).toLocaleString('ko-KR')}</td>
-                        <td>${trade.exit_time ? new Date(trade.exit_time).toLocaleString('ko-KR') : '-'}</td>
                         <td>${trade.coin}</td>
                         <td><span class="badge ${trade.type.toLowerCase()}">${trade.type}</span></td>
                         <td>$${trade.entry_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}</td>
@@ -788,7 +643,7 @@
                     </tr>
                 `);
 
-                tbody.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="8" class="loading">거래 기록이 없습니다</td></tr>';
+                tbody.innerHTML = rows.length > 0 ? rows.join('') : '<tr><td colspan="7" class="loading">거래 기록이 없습니다</td></tr>';
             } catch (error) {
                 console.error('거래기록 로드 실패:', error);
             }
@@ -849,12 +704,12 @@
                     console.error('거래 중지 실패:', error);
                 }
             } else {
-                // 거래 시작 (페이퍼 모드 활성화)
+                // 거래 시작 (페이퍼/라이브 모드 모두 가능)
                 try {
-                    await apiFetch(`/api/mode/paper`, { method: 'POST' });
                     setIsTradingState(true);
                     updateTradingButton();
-                    alert('✅ 거래가 시작되었습니다');
+                    const modeText = mode.includes('라이브') ? '🔴 라이브 모드' : '📄 페이퍼 모드';
+                    alert(`✅ 거래가 시작되었습니다 (${modeText})`);
                 } catch (error) {
                     console.error('거래 시작 실패:', error);
                 }
@@ -999,28 +854,6 @@
             }
         }
 
-        async function autoSelectCoins() {
-            if (!confirm('🤖 거래량 $5M-50M 범위의 최적 코인 5개를 자동 선택하시겠습니까?')) return;
-
-            try {
-                const response = await apiFetch('/api/coins/auto-select', {
-                    method: 'POST'
-                });
-
-                const data = await response.json();
-                if (!response.ok) {
-                    alert('❌ ' + (data.error || '자동 선택 실패'));
-                    return;
-                }
-
-                alert(`✅ 자동 선택 완료\n추가된 코인: ${data.added_coins.join(', ') || '없음'}\n현재 코인: ${data.current_coins.join(', ')}`);
-                loadSettings();
-            } catch (error) {
-                console.error('자동 코인 선택 실패:', error);
-                alert('❌ 자동 선택 중 오류가 발생했습니다');
-            }
-        }
-
         async function removeCoin(symbol) {
             if (!confirm(`${symbol}을(를) 삭제하시겠습니까?`)) return;
 
@@ -1044,76 +877,74 @@
 
         function loadCoinsList(coins) {
             const list = document.getElementById('coins-list');
+            const settingsContainer = document.getElementById('coin-settings-container');
 
             if (coins.length === 0) {
                 list.innerHTML = '<p class="loading">추가된 코인이 없습니다</p>';
+                settingsContainer.innerHTML = '<p class="loading">설정할 코인을 선택하세요</p>';
                 return;
             }
 
             list.innerHTML = coins.map(coin => `
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: var(--bg-dark); border-radius: 6px;">
-                    <span style="font-weight: 600;">${coin.toUpperCase()}</span>
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn btn-primary" onclick="showCoinSettings('${coin}')" style="padding: 4px 12px; font-size: 12px;">⚙️ 설정</button>
-                        <button type="button" class="btn btn-danger" onclick="removeCoin('${coin}')" style="padding: 4px 12px; font-size: 12px;">삭제</button>
+                    <div style="flex: 1;">
+                        <span style="font-weight: 600;">${coin.toUpperCase()}</span>
+                        <button type="button" class="btn btn-primary" onclick="showCoinSettings('${coin}')" style="padding: 4px 12px; font-size: 12px; margin-left: 10px;">설정</button>
                     </div>
+                    <button type="button" class="btn btn-danger" onclick="removeCoin('${coin}')" style="padding: 4px 12px; font-size: 12px;">삭제</button>
                 </div>
             `).join('');
+
+            // 첫 번째 코인 설정 표시
+            showCoinSettings(coins[0]);
         }
 
         // ===== 코인별 상세 설정 =====
         async function showCoinSettings(coin) {
-            const modalBody = document.getElementById('modal-body');
-            const modal = document.getElementById('coin-settings-modal');
+            const container = document.getElementById('coin-settings-container');
 
             try {
                 const response = await apiFetch(`/api/coins/${coin}/settings`);
                 const data = await response.json();
 
-                modalBody.innerHTML = `
-                    <form onsubmit="saveCoinSettings('${coin}', event)">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                            <div class="form-group">
-                                <label>초기 시드 ($)</label>
-                                <input type="number" id="initial-seed-${coin}" value="${data.initial_seed || 1000}" min="100" step="100">
+                container.innerHTML = `
+                    <div>
+                        <h3>${coin.toUpperCase()} 설정</h3>
+                        <form onsubmit="saveCoinSettings('${coin}', event)">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="form-group">
+                                    <label>초기 시드 ($)</label>
+                                    <input type="number" id="initial-seed-${coin}" value="${data.initial_seed || 1000}" min="100" step="100">
+                                </div>
+                                <div class="form-group">
+                                    <label>레버리지</label>
+                                    <input type="number" id="leverage-${coin}" value="${data.leverage || 10}" min="1" max="100" step="1">
+                                </div>
+                                <div class="form-group">
+                                    <label>익절 (TP) %</label>
+                                    <input type="number" id="tp-${coin}" value="${data.tp || 2.0}" min="0.1" max="10" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>손절 (SL) %</label>
+                                    <input type="number" id="sl-${coin}" value="${data.sl || 1.5}" min="0.1" max="10" step="0.1">
+                                </div>
+                                <div class="form-group">
+                                    <label>진입 비율 (%)</label>
+                                    <input type="number" id="entry-percent-${coin}" value="${data.entry_percent || 75}" min="10" max="100" step="5">
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label>현재 시드</label>
+                                    <input type="text" value="$${data.current_seed || data.initial_seed || 1000}" disabled style="background-color: var(--bg-dark); color: var(--text-secondary);">
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label>레버리지</label>
-                                <input type="number" id="leverage-${coin}" value="${data.leverage || 10}" min="1" max="100" step="1">
-                            </div>
-                            <div class="form-group">
-                                <label>익절 (TP) %</label>
-                                <input type="number" id="tp-${coin}" value="${data.tp || 2.0}" min="0.1" max="10" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label>손절 (SL) %</label>
-                                <input type="number" id="sl-${coin}" value="${data.sl || 1.5}" min="0.1" max="10" step="0.1">
-                            </div>
-                            <div class="form-group">
-                                <label>진입 비율 (%)</label>
-                                <input type="number" id="entry-percent-${coin}" value="${data.entry_percent || 75}" min="10" max="100" step="5">
-                            </div>
-                            <div class="form-group" style="grid-column: span 2;">
-                                <label>현재 시드</label>
-                                <input type="text" value="$${data.current_seed || data.initial_seed || 1000}" disabled style="background-color: var(--bg-dark); color: var(--text-secondary);">
-                            </div>
-                        </div>
-                        <div style="display: flex; gap: 10px; margin-top: 20px;">
-                            <button type="submit" class="btn btn-primary" style="flex: 1;">저장</button>
-                            <button type="button" class="btn" style="flex: 1; background-color: var(--border); color: var(--text-primary); border: 1px solid var(--border);" onclick="closeCoinSettingsModal()">취소</button>
-                        </div>
-                    </form>
+                            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;">저장</button>
+                        </form>
+                    </div>
                 `;
-                modal.style.display = 'flex';
             } catch (error) {
                 console.error('코인 설정 로드 실패:', error);
-                modalBody.innerHTML = '<p class="loading">설정을 불러올 수 없습니다</p>';
+                container.innerHTML = '<p class="loading">설정을 불러올 수 없습니다</p>';
             }
-        }
-
-        function closeCoinSettingsModal() {
-            const modal = document.getElementById('coin-settings-modal');
-            modal.style.display = 'none';
         }
 
         async function saveCoinSettings(coin, event) {
@@ -1136,7 +967,6 @@
                 const data = await response.json();
                 if (data.success) {
                     alert(`✅ ${coin.toUpperCase()} 설정이 저장되었습니다`);
-                    closeCoinSettingsModal();
                     loadSettings();
                 } else {
                     alert('❌ 저장 실패');
@@ -1211,245 +1041,6 @@
         checkAuth();
         updateTradingButton();
         loadSettings();
-        // ===== 달력 기능 =====
-        let currentDate = new Date();
-        let calendarData = {};
-        let totalSeed = 0;
-
-        async function loadCalendar() {
-            try {
-                const response = await apiFetch('/api/trades/calendar');
-                const result = await response.json();
-
-                if (result.success) {
-                    calendarData = result.data;
-                    totalSeed = result.total_seed || 0;
-                    renderCalendar();
-                }
-            } catch (error) {
-                console.error('달력 로드 실패:', error);
-            }
-        }
-
-        function renderCalendar() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-
-            // 월 정보 업데이트
-            const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
-            document.getElementById('calendar-month').textContent = `${year}년 ${monthNames[month]}`;
-
-            // 이번 달 통계
-            let monthWins = 0, monthLoss = 0, monthProfit = 0;
-
-            for (const [date, data] of Object.entries(calendarData)) {
-                const dateObj = new Date(date + 'T00:00:00');
-                if (dateObj.getFullYear() === year && dateObj.getMonth() === month) {
-                    monthWins += data.win_trades;
-                    monthLoss += data.loss_trades;
-                    monthProfit += data.total_profit;
-                }
-            }
-
-            document.getElementById('calendar-win-trades').textContent = monthWins;
-            document.getElementById('calendar-loss-trades').textContent = monthLoss;
-            document.getElementById('calendar-total-profit').textContent = `$${monthProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-            // 수익금 / 총시드 표시
-            document.getElementById('calendar-seed-display').textContent = `/ $${totalSeed.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            const roiPct = totalSeed > 0 ? (monthProfit / totalSeed * 100) : 0;
-            document.getElementById('calendar-roi-pct').textContent = `${roiPct > 0 ? '+' : ''}${roiPct.toFixed(2)}%`;
-
-            // 달력 그리기
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            const calendarGrid = document.getElementById('calendar-grid');
-            const dayElements = Array.from(calendarGrid.querySelectorAll('div')).slice(7);
-            dayElements.forEach(el => el.remove());
-
-            // 이전 달 공백
-            for (let i = 0; i < firstDay; i++) {
-                const emptyDay = document.createElement('div');
-                emptyDay.style.padding = '10px';
-                calendarGrid.appendChild(emptyDay);
-            }
-
-            // 날짜
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dayData = calendarData[dateStr];
-
-                const dayElement = document.createElement('div');
-                dayElement.style.cssText = `
-                    padding: 12px;
-                    border: 1px solid var(--border);
-                    border-radius: 6px;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    background-color: var(--bg-dark);
-                    min-height: 80px;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    gap: 5px;
-                `;
-
-                if (dayData) {
-                    dayElement.style.cssText += `
-                        border-color: var(--primary);
-                        background-color: rgba(59, 130, 246, 0.1);
-                        cursor: pointer;
-                    `;
-
-                    const profit = dayData.total_profit;
-                    const profitColor = profit > 0 ? 'var(--success)' : 'var(--danger)';
-
-                    dayElement.innerHTML = `
-                        <div style="font-weight: 600; font-size: 14px;">${day}</div>
-                        <div style="font-size: 12px; color: var(--text-secondary);">${dayData.total_trades}건</div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">
-                            ✅${dayData.win_trades} / ❌${dayData.loss_trades}
-                        </div>
-                        <div style="font-weight: 600; font-size: 12px; color: ${profitColor};">
-                            ${profit > 0 ? '+' : ''}$${profit.toFixed(2)}
-                        </div>
-                    `;
-
-                    dayElement.onclick = () => openTradesDetail(dateStr, dayData);
-                } else {
-                    dayElement.innerHTML = `<div style="color: var(--text-secondary);">${day}</div>`;
-                }
-
-                calendarGrid.appendChild(dayElement);
-            }
-        }
-
-        function prevMonth() {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            renderCalendar();
-        }
-
-        function nextMonth() {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            renderCalendar();
-        }
-
-        async function openTradesDetail(dateStr, dayData) {
-            const modal = document.getElementById('trades-detail-modal');
-            const body = document.getElementById('trades-detail-body');
-
-            const [year, month, day] = dateStr.split('-');
-            document.getElementById('modal-trade-date').textContent = `${year}년 ${month}월 ${day}일 거래내역`;
-
-            body.innerHTML = '<p class="loading">로딩 중...</p>';
-            modal.style.display = 'flex';
-
-            try {
-                const response = await apiFetch(`/api/trades/calendar-detail/${dateStr}`);
-                const result = await response.json();
-
-                if (result.success && result.trades.length > 0) {
-                    let totalDayProfit = 0;
-                    let dayWins = 0;
-                    let dayLoss = 0;
-
-                    let html = `
-                        <table style="width: 100%; font-size: 13px;">
-                            <thead>
-                                <tr style="border-bottom: 1px solid var(--border);">
-                                    <th style="padding: 10px; text-align: left;">코인</th>
-                                    <th style="padding: 10px; text-align: center;">타입</th>
-                                    <th style="padding: 10px; text-align: right;">진입가</th>
-                                    <th style="padding: 10px; text-align: right;">매도가</th>
-                                    <th style="padding: 10px; text-align: right;">수익</th>
-                                    <th style="padding: 10px; text-align: right;">수익률</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                    `;
-
-                    result.trades.forEach(trade => {
-                        const profitColor = trade.profit > 0 ? 'var(--success)' : 'var(--danger)';
-                        totalDayProfit += trade.profit;
-                        if (trade.profit > 0) dayWins++;
-                        else dayLoss++;
-
-                        html += `
-                            <tr style="border-bottom: 1px solid var(--border);">
-                                <td style="padding: 10px; font-weight: 600;">${trade.coin}</td>
-                                <td style="padding: 10px; text-align: center;">
-                                    <span style="padding: 2px 6px; border-radius: 3px; background-color: ${trade.type === 'LONG' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)'}; color: ${trade.type === 'LONG' ? 'var(--primary)' : 'var(--danger)'}; font-size: 11px;">
-                                        ${trade.type}
-                                    </span>
-                                </td>
-                                <td style="padding: 10px; text-align: right;">$${trade.entry_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}</td>
-                                <td style="padding: 10px; text-align: right;">$${trade.exit_price.toFixed(8).replace(/0+$/, '').replace(/\.$/, '')}</td>
-                                <td style="padding: 10px; text-align: right; color: ${profitColor}; font-weight: 600;">
-                                    ${trade.profit > 0 ? '+' : ''}$${trade.profit.toFixed(2)}
-                                </td>
-                                <td style="padding: 10px; text-align: right; color: ${profitColor}; font-weight: 600;">
-                                    ${trade.profit_pct > 0 ? '+' : ''}${trade.profit_pct.toFixed(2)}%
-                                </td>
-                            </tr>
-                        `;
-                    });
-
-                    html += '</tbody></table>';
-
-                    // 하단 요약 추가
-                    const dailyTotalSeed = result.daily_total_seed || totalSeed;
-                    const cumulativeProfit = result.cumulative_profit || 0;
-                    const dayRoiPct = dailyTotalSeed > 0 ? (cumulativeProfit / dailyTotalSeed * 100) : 0;
-
-                    html += `
-                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border);">
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
-                                <div style="text-align: center;">
-                                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px;">거래 건수</div>
-                                    <div style="font-size: 16px; font-weight: 600;">${result.trades.length}</div>
-                                </div>
-                                <div style="text-align: center;">
-                                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px;">승리 / 손실</div>
-                                    <div style="font-size: 14px; font-weight: 600;">
-                                        <span style="color: var(--success);">${dayWins}</span> /
-                                        <span style="color: var(--danger);">${dayLoss}</span>
-                                    </div>
-                                </div>
-                                <div style="text-align: center;">
-                                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 5px;">수익금</div>
-                                    <div style="font-size: 16px; font-weight: 600; color: ${totalDayProfit > 0 ? 'var(--success)' : 'var(--danger)'};">
-                                        ${totalDayProfit > 0 ? '+' : ''}$${totalDayProfit.toFixed(2)}
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="margin-top: 15px; padding: 15px; background-color: var(--bg-dark); border-radius: 8px; text-align: center;">
-                                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">누적 수익금 / 그날의 총시드</div>
-                                <div style="font-size: 20px; font-weight: 600; color: var(--primary);">
-                                    $${cumulativeProfit.toFixed(2)} / $${dailyTotalSeed.toFixed(2)}
-                                </div>
-                                <div style="font-size: 14px; font-weight: 600; color: ${dayRoiPct > 0 ? 'var(--success)' : 'var(--danger)'}; margin-top: 8px;">
-                                    ${dayRoiPct > 0 ? '+' : ''}${dayRoiPct.toFixed(2)}%
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
-                    body.innerHTML = html;
-                } else {
-                    body.innerHTML = '<p class="loading">이 날짜에 거래가 없습니다</p>';
-                }
-            } catch (error) {
-                console.error('거래 상세 로드 실패:', error);
-                body.innerHTML = '<p class="loading">거래 상세를 불러올 수 없습니다</p>';
-            }
-        }
-
-        function closeTradesDetailModal() {
-            document.getElementById('trades-detail-modal').style.display = 'none';
-        }
-
         updateDashboard();
         setInterval(updateDashboard, 10000); // 10초마다 업데이트
     </script>
