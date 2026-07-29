@@ -1793,12 +1793,15 @@
                     `;
 
                     const profit = dayData.profit || 0;
-                    const count = dayData.count || 0;
+                    const wins = dayData.wins || 0;
+                    const losses = dayData.losses || 0;
                     const profitColor = profit > 0 ? 'var(--success)' : 'var(--danger)';
 
                     dayElement.innerHTML = `
                         <div style="font-weight: 600; font-size: 12px;">${day}</div>
-                        <div style="color: var(--text-secondary);">${count}건</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">
+                            ✅${wins} / ❌${losses}
+                        </div>
                         <div style="font-weight: 600; color: ${profitColor};">
                             ${profit > 0 ? '+' : ''}$${profit.toFixed(2)}
                         </div>
