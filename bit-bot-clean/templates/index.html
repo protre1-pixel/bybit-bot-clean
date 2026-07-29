@@ -1310,30 +1310,15 @@
                         cursor: pointer;
                     `;
 
-<<<<<<< HEAD:bit-bot-clean/templates/index.html
                     const profit = dayData.total_profit;
-=======
-                    const profit = dayData.profit || 0;
-                    const wins = dayData.wins || 0;
-                    const losses = dayData.losses || 0;
->>>>>>> f1d08c85c0a8f21783d6e71d4829ce6d25f83176:templates/index.html
                     const profitColor = profit > 0 ? 'var(--success)' : 'var(--danger)';
 
-                    const totalTrades = dayData.win_trades + dayData.loss_trades;
                     dayElement.innerHTML = `
-<<<<<<< HEAD:bit-bot-clean/templates/index.html
                         <div style="font-weight: 600; font-size: 14px;">${day}</div>
                         <div style="font-size: 11px; color: var(--text-secondary);">
                             ✅${dayData.win_trades} / ❌${dayData.loss_trades}
                         </div>
                         <div style="font-weight: 600; font-size: 12px; color: ${profitColor};">
-=======
-                        <div style="font-weight: 600; font-size: 12px;">${day}</div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">
-                            ✅${wins} / ❌${losses}
-                        </div>
-                        <div style="font-weight: 600; color: ${profitColor};">
->>>>>>> f1d08c85c0a8f21783d6e71d4829ce6d25f83176:templates/index.html
                             ${profit > 0 ? '+' : ''}$${profit.toFixed(2)}
                         </div>
                     `;
