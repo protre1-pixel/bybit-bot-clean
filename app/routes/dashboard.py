@@ -136,22 +136,37 @@ def get_calendar_data(year, month):
     trades = load_trades(username)
     state = load_state(username)
 
+    initial_seed = state.get('total_seed', 0)
     daily_profit = {}
-    for trade in trades:
+    cumulative_profit = 0
+
+    # 거래를 시간순으로 정렬
+    sorted_trades = sorted(trades, key=lambda x: x.get('entry_time', ''))
+
+    for trade in sorted_trades:
         try:
             entry_date = datetime.fromisoformat(trade['entry_time']).strftime('%Y-%m-%d')
             entry_year_month = entry_date[:7]
             current_year_month = f"{year:04d}-{month:02d}"
 
+            profit = trade.get('profit', 0)
+
             if entry_year_month == current_year_month:
                 if entry_date not in daily_profit:
-                    daily_profit[entry_date] = {'profit': 0, 'count': 0, 'wins': 0, 'losses': 0}
-                daily_profit[entry_date]['profit'] += trade.get('profit', 0)
-                daily_profit[entry_date]['count'] += 1
-                if trade.get('profit', 0) > 0:
+                    daily_profit[entry_date] = {'profit': 0, 'wins': 0, 'losses': 0, 'cumulative_profit': 0, 'daily_total_seed': initial_seed}
+                daily_profit[entry_date]['profit'] += profit
+                if profit > 0:
                     daily_profit[entry_date]['wins'] += 1
                 else:
                     daily_profit[entry_date]['losses'] += 1
+
+            # 누적 수익 계산
+            cumulative_profit += profit
+            if entry_date <= f"{year:04d}-{month:02d}-31":  # 해당 월 내 거래만
+                if entry_date in daily_profit:
+                    daily_profit[entry_date]['cumulative_profit'] = cumulative_profit
+                    daily_profit[entry_date]['daily_total_seed'] = initial_seed + cumulative_profit
+
         except (ValueError, TypeError, KeyError) as e:
             logger.warning(f"[WARN] 거래 날짜 파싱 실패: {e}")
 
@@ -159,7 +174,7 @@ def get_calendar_data(year, month):
         "year": year,
         "month": month,
         "daily_profit": daily_profit,
-        "total_seed": state.get('total_seed', 0)
+        "total_seed": initial_seed
     })
 
 
@@ -169,17 +184,38 @@ def get_trades_by_date(date):
     """특정 날짜의 거래 내역 조회"""
     username = get_current_user() or 'guest'
     trades = load_trades(username)
+    state = load_state(username)
 
+    initial_seed = state.get('total_seed', 0)
     date_trades = []
-    for trade in trades:
+    cumulative_profit = 0
+
+    # 거래를 시간순으로 정렬
+    sorted_trades = sorted(trades, key=lambda x: x.get('entry_time', ''))
+
+    for trade in sorted_trades:
         try:
             entry_date = datetime.fromisoformat(trade['entry_time']).strftime('%Y-%m-%d')
+            profit = trade.get('profit', 0)
+
             if entry_date == date:
                 date_trades.append(trade)
+
+            # 누적 수익 계산
+            if entry_date <= date:
+                cumulative_profit += profit
+
         except (ValueError, TypeError, KeyError) as e:
             logger.warning(f"[WARN] 거래 날짜 필터링 실패: {e}")
 
-    return jsonify({"date": date, "trades": date_trades})
+    daily_total_seed = initial_seed + cumulative_profit
+
+    return jsonify({
+        "date": date,
+        "trades": date_trades,
+        "daily_total_seed": daily_total_seed,
+        "cumulative_profit": cumulative_profit
+    })
 
 
 @dashboard_bp.route('/wallet/balance', methods=['GET'])
