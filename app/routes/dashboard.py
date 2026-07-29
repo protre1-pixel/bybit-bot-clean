@@ -134,6 +134,7 @@ def get_calendar_data(year, month):
     """달력 데이터 조회 (날짜별 수익금)"""
     username = get_current_user() or 'guest'
     trades = load_trades(username)
+    state = load_state(username)
 
     daily_profit = {}
     for trade in trades:
@@ -144,16 +145,21 @@ def get_calendar_data(year, month):
 
             if entry_year_month == current_year_month:
                 if entry_date not in daily_profit:
-                    daily_profit[entry_date] = {'profit': 0, 'count': 0}
+                    daily_profit[entry_date] = {'profit': 0, 'count': 0, 'wins': 0, 'losses': 0}
                 daily_profit[entry_date]['profit'] += trade.get('profit', 0)
                 daily_profit[entry_date]['count'] += 1
+                if trade.get('profit', 0) > 0:
+                    daily_profit[entry_date]['wins'] += 1
+                else:
+                    daily_profit[entry_date]['losses'] += 1
         except (ValueError, TypeError, KeyError) as e:
             logger.warning(f"[WARN] 거래 날짜 파싱 실패: {e}")
 
     return jsonify({
         "year": year,
         "month": month,
-        "daily_profit": daily_profit
+        "daily_profit": daily_profit,
+        "total_seed": state.get('total_seed', 0)
     })
 
 
