@@ -1054,17 +1054,5 @@
     "profit_pct": -15.0,
     "position_size": 103358.88390994,
     "reason": "Stop Loss"
-  },
-  {
-    "coin": "WLD",
-    "type": "SHORT",
-    "entry_price": 0.3029,
-    "exit_price": 0.307443,
-    "entry_time": "2026-07-29T12:27:08.407413",
-    "exit_time": "2026-07-29T17:00:12.580076",
-    "profit": -178.43,
-    "profit_pct": -15.0,
-    "position_size": 39272.3483176,
-    "reason": "Stop Loss"
   }
 ]
