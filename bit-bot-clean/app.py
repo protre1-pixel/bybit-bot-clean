@@ -634,6 +634,9 @@ def close_trade(coin_key, exit_price, reason, state, username=None):
         # ⭐ 거래 종료 후 5분간 자동 거래 비활성화 (반복 방지)
         state[coin_key]["last_close_time"] = datetime.now().isoformat()
 
+        # ⭐ 상태를 즉시 저장하여 5분 방지 로직이 다음 iteration에서 적용되도록
+        save_state(state, username)
+
         logger.info(f"[{coin_key.upper()}] 거래 종료: {reason}, 수익: ${profit:.2f}")
     except Exception as e:
         logger.error(f"[ERROR] close_trade ({coin_key}): {e}")
