@@ -105,7 +105,7 @@
     "aster": {}
   },
   "aave": {
-    "current_price": 98.6,
+    "current_price": 99.03,
     "position": null,
     "entry_price": null,
     "entry_time": null,
@@ -123,7 +123,7 @@
     "order_id": null
   },
   "hype": {
-    "current_price": 54.41,
+    "current_price": 54.94,
     "position": null,
     "entry_price": null,
     "entry_time": null,
@@ -141,7 +141,7 @@
     "order_id": null
   },
   "ena": {
-    "current_price": 0.08036,
+    "current_price": 0.08177,
     "position": null,
     "entry_price": null,
     "entry_time": null,
@@ -159,7 +159,7 @@
     "order_id": null
   },
   "wld": {
-    "current_price": 0.298,
+    "current_price": 0.311,
     "position": null,
     "entry_price": null,
     "entry_time": null,
@@ -177,7 +177,7 @@
     "order_id": null
   },
   "link": {
-    "current_price": 8.337,
+    "current_price": 8.458,
     "position": null,
     "entry_price": null,
     "entry_time": null,
@@ -195,7 +195,7 @@
     "order_id": null
   },
   "sol": {
-    "current_price": 73.08,
+    "current_price": 74.13,
     "position": null,
     "entry_price": null,
     "entry_time": null,
@@ -213,14 +213,14 @@
     "order_id": null
   },
   "xaut": {
-    "current_price": 4016.9,
+    "current_price": 4026.5,
     "position": "short",
     "entry_price": 4045.8,
     "entry_time": "2026-07-28T10:20:43.864791",
     "position_size": 0.23927977213743518,
     "margin": 0,
-    "profit": 6.915185414771899,
-    "profit_pct": 0.7143210242720868,
+    "profit": 4.618099602252542,
+    "profit_pct": 0.47703791586336897,
     "sl_price": 4066.3945,
     "tp_price": 3964.884,
     "max_profit_price": 4006.3,
@@ -285,14 +285,14 @@
     "order_id": null
   },
   "mnt": {
-    "current_price": 0.4013,
+    "current_price": 0.4027,
     "position": "long",
     "entry_price": 0.4038,
     "entry_time": "2026-07-29T11:36:33.238523",
     "position_size": 2383.415000239026,
     "margin": -1.0197237158715249,
-    "profit": -5.95853750059757,
-    "profit_pct": -0.6191183754333834,
+    "profit": -2.6217565002629044,
+    "profit_pct": -0.272412085190686,
     "sl_price": 0.39794,
     "tp_price": 0.411876,
     "max_profit_price": 0.404,
@@ -303,14 +303,14 @@
     "order_id": null
   },
   "pepe": {
-    "current_price": 2.736e-06,
+    "current_price": 2.747e-06,
     "position": "short",
     "entry_price": 2.75e-06,
     "entry_time": "2026-07-29T12:30:14.036882",
     "position_size": 912544312.8507786,
     "margin": 6.754579668842477,
-    "profit": 12.7756203799107,
-    "profit_pct": 0.5090909090909012,
+    "profit": 2.7376329385521547,
+    "profit_pct": 0.1090909090909019,
     "sl_price": 2.771965e-06,
     "tp_price": 2.695e-06,
     "max_profit_price": 2.731e-06,
@@ -321,17 +321,17 @@
     "order_id": null
   },
   "aster": {
-    "current_price": 0.6116,
+    "current_price": 0.6045,
     "position": "short",
     "entry_price": 0.6158,
     "entry_time": "2026-07-28T23:48:56.815150",
     "position_size": 3869.3994355157056,
     "margin": 0,
-    "profit": 16.25147762916589,
-    "profit_pct": 0.6820396232543003,
-    "sl_price": 0.6207739999999999,
+    "profit": 43.72421362132739,
+    "profit_pct": 1.8350113673270503,
+    "sl_price": 0.6135674999999999,
     "tp_price": 0.603484,
-    "max_profit_price": 0.6116,
+    "max_profit_price": 0.6045,
     "min_profit_price": null,
     "last_close_time": null,
     "timeframe": 60,
