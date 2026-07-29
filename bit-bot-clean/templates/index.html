@@ -1306,9 +1306,9 @@
                     const profit = dayData.total_profit;
                     const profitColor = profit > 0 ? 'var(--success)' : 'var(--danger)';
 
+                    const totalTrades = dayData.win_trades + dayData.loss_trades;
                     dayElement.innerHTML = `
                         <div style="font-weight: 600; font-size: 14px;">${day}</div>
-                        <div style="font-size: 12px; color: var(--text-secondary);">${dayData.total_trades}건</div>
                         <div style="font-size: 11px; color: var(--text-secondary);">
                             ✅${dayData.win_trades} / ❌${dayData.loss_trades}
                         </div>
