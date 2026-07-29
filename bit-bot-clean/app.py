@@ -490,12 +490,12 @@ def auto_trade(coin_key, symbol, state, username=None):
         if current_price == 0:
             return
 
-        # ⭐ 거래 종료 후 5분 이내는 자동 거래 비활성화 (반복 진입 방지)
+        # ⭐ 거래 종료 후 30분 이내는 자동 거래 비활성화 (반복 진입 방지)
         if "last_close_time" in state[coin_key] and state[coin_key]["last_close_time"]:
             try:
                 last_close_time = datetime.fromisoformat(state[coin_key]["last_close_time"])
                 elapsed = (datetime.now() - last_close_time).total_seconds()
-                if elapsed < 300:  # 300초 = 5분
+                if elapsed < 1800:  # 1800초 = 30분
                     return
             except:
                 pass
