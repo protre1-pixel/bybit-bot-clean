@@ -1725,19 +1725,17 @@
             document.getElementById('calendar-month').textContent = `${year}년 ${monthNames[month]}`;
 
             // 이번 달 통계
-            let monthTotal = 0, monthWins = 0, monthLoss = 0, monthProfit = 0;
+            let monthWins = 0, monthLoss = 0, monthProfit = 0;
 
             for (const [date, data] of Object.entries(calendarData)) {
                 const dateObj = new Date(date + 'T00:00:00');
                 if (dateObj.getFullYear() === year && dateObj.getMonth() === month) {
-                    monthTotal += data.count || 0;
                     monthProfit += data.profit || 0;
                     monthWins += data.wins || 0;
                     monthLoss += data.losses || 0;
                 }
             }
 
-            document.getElementById('calendar-total-trades').textContent = monthTotal;
             document.getElementById('calendar-win-trades').textContent = monthWins;
             document.getElementById('calendar-loss-trades').textContent = monthLoss;
             document.getElementById('calendar-total-profit').textContent = `$${monthProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
