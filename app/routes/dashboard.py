@@ -136,30 +136,55 @@ def get_calendar_data(year, month):
     trades = load_trades(username)
     state = load_state(username)
 
+    target_year_month = f"{year:04d}-{month:02d}"
+
+    # 전체 수익 계산
+    total_profit_all = sum([t.get('profit', 0) for t in trades])
+    current_total_seed = state.get('total_seed', 3000)
+    initial_seed = current_total_seed - total_profit_all
+
     daily_profit = {}
+
+    # 현재 월의 거래 처리
     for trade in trades:
         try:
             entry_date = datetime.fromisoformat(trade['entry_time']).strftime('%Y-%m-%d')
             entry_year_month = entry_date[:7]
-            current_year_month = f"{year:04d}-{month:02d}"
 
-            if entry_year_month == current_year_month:
+            if entry_year_month == target_year_month:
                 if entry_date not in daily_profit:
-                    daily_profit[entry_date] = {'profit': 0, 'count': 0, 'wins': 0, 'losses': 0}
-                daily_profit[entry_date]['profit'] += trade.get('profit', 0)
-                daily_profit[entry_date]['count'] += 1
-                if trade.get('profit', 0) > 0:
-                    daily_profit[entry_date]['wins'] += 1
+                    daily_profit[entry_date] = {
+                        'total_trades': 0,
+                        'win_trades': 0,
+                        'loss_trades': 0,
+                        'total_profit': 0,
+                        'current_seed': 0
+                    }
+
+                profit = trade.get('profit', 0)
+                daily_profit[entry_date]['total_trades'] += 1
+                daily_profit[entry_date]['total_profit'] += profit
+
+                if profit > 0:
+                    daily_profit[entry_date]['win_trades'] += 1
                 else:
-                    daily_profit[entry_date]['losses'] += 1
+                    daily_profit[entry_date]['loss_trades'] += 1
         except (ValueError, TypeError, KeyError) as e:
             logger.warning(f"[WARN] 거래 날짜 파싱 실패: {e}")
+
+    # 날짜 정렬 후 누적 시드 계산
+    sorted_dates = sorted(daily_profit.keys())
+    cumulative = 0
+    for date in sorted_dates:
+        cumulative += daily_profit[date]['total_profit']
+        daily_profit[date]['current_seed'] = round(initial_seed + cumulative, 2)
 
     return jsonify({
         "year": year,
         "month": month,
         "daily_profit": daily_profit,
-        "total_seed": state.get('total_seed', 0)
+        "total_seed": round(current_total_seed, 2),
+        "initial_seed": round(initial_seed, 2)
     })
 
 

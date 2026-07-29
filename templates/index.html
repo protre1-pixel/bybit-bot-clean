@@ -1716,7 +1716,7 @@
                 const result = await response.json();
 
                 calendarData = result.daily_profit || {};
-                totalSeed = result.total_seed || 0;
+                totalSeed = result.initial_seed || result.total_seed || 0;
                 renderCalendar();
             } catch (error) {
                 console.error('달력 로드 실패:', error);
@@ -1737,10 +1737,10 @@
             for (const [date, data] of Object.entries(calendarData)) {
                 const dateObj = new Date(date + 'T00:00:00');
                 if (dateObj.getFullYear() === year && dateObj.getMonth() === month) {
-                    monthTotal += data.count || 0;
-                    monthProfit += data.profit || 0;
-                    monthWins += data.wins || 0;
-                    monthLoss += data.losses || 0;
+                    monthTotal += data.total_trades || 0;
+                    monthProfit += data.total_profit || 0;
+                    monthWins += data.win_trades || 0;
+                    monthLoss += data.loss_trades || 0;
                 }
             }
 
@@ -1750,8 +1750,9 @@
             document.getElementById('calendar-total-profit').textContent = `$${monthProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
             // 수익금 / 총시드 표시
+            const currentTotalSeed = totalSeed + monthProfit;
             document.getElementById('calendar-profit-display').textContent = `$${monthProfit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('calendar-seed-display').textContent = `/ $${totalSeed.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('calendar-seed-display').textContent = `/ $${currentTotalSeed.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             const roiPct = totalSeed > 0 ? (monthProfit / totalSeed * 100) : 0;
             document.getElementById('calendar-roi-pct').textContent = `${roiPct > 0 ? '+' : ''}${roiPct.toFixed(2)}%`;
 
@@ -1799,15 +1800,21 @@
                         cursor: pointer;
                     `;
 
-                    const profit = dayData.profit || 0;
-                    const count = dayData.count || 0;
+                    const profit = dayData.total_profit || 0;
+                    const trades = dayData.total_trades || 0;
+                    const wins = dayData.win_trades || 0;
+                    const losses = dayData.loss_trades || 0;
+                    const currentSeed = dayData.current_seed || 0;
                     const profitColor = profit > 0 ? 'var(--success)' : 'var(--danger)';
 
                     dayElement.innerHTML = `
                         <div style="font-weight: 600; font-size: 12px;">${day}</div>
-                        <div style="color: var(--text-secondary);">${count}건</div>
-                        <div style="font-weight: 600; color: ${profitColor};">
-                            ${profit > 0 ? '+' : ''}$${profit.toFixed(2)}
+                        <div style="font-size: 11px; color: var(--text-secondary);">${trades}건</div>
+                        <div style="font-size: 10px; color: var(--text-secondary);">
+                            ✅${wins} / ❌${losses}
+                        </div>
+                        <div style="font-weight: 600; font-size: 10px; color: ${profitColor};">
+                            ${profit > 0 ? '+' : ''}$${profit.toFixed(2)} / $${currentSeed.toFixed(2)}
                         </div>
                     `;
 
@@ -1839,6 +1846,10 @@
 
             body.innerHTML = '<p class="loading">로딩 중...</p>';
             modal.style.display = 'flex';
+
+            // 달력에서 그 날의 데이터 가져오기
+            const dayData = calendarData[dateStr] || {};
+            const daySeed = dayData.current_seed || totalSeed;
 
             try {
                 const response = await apiFetch(`/api/trades/${dateStr}`);
@@ -1917,11 +1928,8 @@
                             </div>
                             <div style="margin-top: 12px; padding: 12px; background-color: var(--bg-dark); border-radius: 8px; text-align: center;">
                                 <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 6px;">수익금 / 총시드</div>
-                                <div style="font-size: 14px; font-weight: 600; color: var(--primary);">
-                                    $${totalDayProfit.toFixed(2)} / $${totalSeed.toFixed(2)}
-                                </div>
-                                <div style="font-size: 12px; font-weight: 600; color: ${dayRoiPct > 0 ? 'var(--success)' : 'var(--danger)'}; margin-top: 6px;">
-                                    ${dayRoiPct > 0 ? '+' : ''}${dayRoiPct.toFixed(2)}%
+                                <div style="font-size: 16px; font-weight: 600; color: ${totalDayProfit > 0 ? 'var(--success)' : 'var(--danger)'};">
+                                    ${totalDayProfit > 0 ? '+' : ''}$${totalDayProfit.toFixed(2)} / $${daySeed.toFixed(2)}
                                 </div>
                             </div>
                         </div>
