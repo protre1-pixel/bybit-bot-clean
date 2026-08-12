@@ -263,12 +263,19 @@ def auto_trade(coin_key, symbol, state, username=None):
         except (ValueError, TypeError) as e:
             logger.warning(f"[WARN] last_close_time 파싱 실패 ({coin_key}): {e}")
 
-        # 거래 진입 후 최소 1분은 TP/SL 체크 안함
+        # 거래 진입 후 최소 1캔들(SQUEEZE_TIMEFRAME분)은 TP/SL 체크 안함
+        # 2026-08-12: 60초 → 1캔들(15분)로 변경. 백테스트는 진입한 캔들에서는 절대
+        # 청산 체크를 하지 않고(포지션 관리 로직이 진입 로직보다 먼저 실행되고, 매 반복이
+        # 캔들 단위라 최초 청산 체크는 다음 캔들 = 최대 15분 후) - 특히 HMA200 Break(정배열
+        # 진입해도 가격이 200선 근처/반대쪽에서 시작하는 눌림목 케이스)는 이 15분 동안 가격이
+        # 유리하게 움직일 시간을 줘야 백테스트 승률(73.1%)이 재현됨. 라이브가 ~1분 폴링으로
+        # 이 시간을 못 주면 같은 조건에서 실거래 손실률이 급증하는 것을 확인함 - 백테스트가
+        # 실제로 검증한 시간창(1캔들)과 라이브를 맞추기 위한 수정.
         if state[coin_key]["position"] and state[coin_key]["entry_time"]:
             try:
                 entry_time = datetime.fromisoformat(state[coin_key]["entry_time"])
                 elapsed = (datetime.now() - entry_time).total_seconds()
-                if elapsed < 60:
+                if elapsed < SQUEEZE_TIMEFRAME * 60:
                     return
             except (ValueError, TypeError) as e:
                 logger.warning(f"[WARN] entry_time 파싱 실패 ({coin_key}): {e}")

@@ -275,7 +275,8 @@ def adx_at(candles, t, period=ADX_PERIOD):
 
 
 def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, profit_lock_ratio=None,
-                  volume_mult=None, adx_min=None, hard_tp_pct=None, use_hma_regime_filter=False):
+                  volume_mult=None, adx_min=None, hard_tp_pct=None, use_hma_regime_filter=False,
+                  use_price_alignment_filter=False):
     """hma200_buffer_pct: normal 단계 HMA200 Break 하드룰에 완충 버퍼(%) 추가.
     0이면 기존과 동일(HMA200을 살짝만 넘어도 즉시 청산). >0이면 그만큼 더 넘어가야 청산.
 
@@ -503,7 +504,24 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                         signal = None
 
                 if signal:
-                    if use_hma_regime_filter:
+                    if use_price_alignment_filter:
+                        # 2026-08-12 실험: 진입 시점에 "가격 / 200 / 600" 완전 정배열(역배열)일
+                        # 때만 진입 허용. 눌림목(가격이 200 아래/위로 눌린 상태) 진입 자체를 차단해서
+                        # 진입 직후 "HMA200 Break" 즉시청산이 애초에 발생하지 않게 만드는 실험.
+                        h200 = hma_at(candles, t, HMA_GAP_FAST)
+                        h600 = hma_at(candles, t, HMA_GAP_SLOW)
+                        h200v = h200["hma"] if h200 else None
+                        h600v = h600["hma"] if h600 else None
+                        if h200v is None or h600v is None:
+                            signal = None
+                        else:
+                            trend_ok = (
+                                (signal == "long" and candle_close > h200v > h600v) or
+                                (signal == "short" and candle_close < h200v < h600v)
+                            )
+                            if not trend_ok:
+                                signal = None
+                    elif use_hma_regime_filter:
                         # 2026-08-12 실험: "가격 vs HMA200" 대신 "HMA200 vs HMA600 정배열/역배열"로
                         # 추세필터를 바꿈. 가격이 일시적으로 200선 아래(위)로 눌려도 큰 추세(200/600
                         # 골든/데드크로스)가 살아있으면 진입 허용 - 눌림목 진입 기회를 넓히려는 목적.
