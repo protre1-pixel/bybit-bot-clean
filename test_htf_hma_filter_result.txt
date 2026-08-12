@@ -1,0 +1,39 @@
+XRPUSDT 상위 타임프레임(1h/4h) HMA200/600 정배열 추세필터 테스트
+
+15분봉 9600개 (2026-04-29 11:30:00 ~ 2026-08-07 11:15:00)
+4시간봉 2400개, HMA600 유효 시작: 2025-10-15 05:00:00
+1시간봉 3840개, HMA600 유효 시작: 2026-03-26 10:00:00
+
+=== live_staging=True (실제 라이브 4단계 청산 로직 그대로) ===
+[A: 현재 라이브 (ADX만, HTF필터 없음)]
+  거래 59 승률 50.8% PF 0.69 수익률 -62.96% MDD 78.1%
+  청산사유: Breakeven Stop:15, Partial Lock Stop:11, Stop Loss:33
+[B: 현재 라이브 + HTF 4h HMA200/600 정배열]
+  거래 38 승률 50.0% PF 0.56 수익률 -56.53% MDD 67.7%
+  청산사유: Breakeven Stop:10, Partial Lock Stop:6, Stop Loss:22
+[C: 현재 라이브 + HTF 1h HMA200/600 정배열]
+  거래 31 승률 54.8% PF 0.65 수익률 -33.65% MDD 44.7%
+  청산사유: Breakeven Stop:9, Partial Lock Stop:6, Stop Loss:16
+[D: ADX 없이 HTF 4h 필터만]
+  거래 44 승률 45.5% PF 0.43 수익률 -73.66% MDD 75.6%
+  청산사유: Breakeven Stop:12, Partial Lock Stop:5, Stop Loss:27
+[E: ADX 없이 HTF 1h 필터만]
+  거래 41 승률 51.2% PF 0.41 수익률 -61.28% MDD 63.0%
+  청산사유: Breakeven Stop:14, Partial Lock Stop:5, Stop Loss:22
+
+=== 참고: live_staging=False (기존 단순화 normal/trailing 2단계, 청산모델 왜곡 배제하고 신호 자체 품질만 비교) ===
+[A: 현재 라이브 (ADX만, HTF필터 없음)]
+  거래 60 승률 45.0% PF 1.02 수익률  +8.44% MDD 76.0%
+  청산사유: Stop Loss:41, Take Profit:19
+[B: 현재 라이브 + HTF 4h HMA200/600 정배열]
+  거래 37 승률 45.9% PF 1.05 수익률 +11.37% MDD 60.3%
+  청산사유: Stop Loss:27, Take Profit:10
+[C: 현재 라이브 + HTF 1h HMA200/600 정배열]
+  거래 30 승률 53.3% PF 1.42 수익률 +77.06% MDD 40.5%
+  청산사유: Stop Loss:19, Take Profit:11
+[D: ADX 없이 HTF 4h 필터만]
+  거래 43 승률 39.5% PF 0.81 수익률 -41.97% MDD 70.4%
+  청산사유: Stop Loss:33, Take Profit:10
+[E: ADX 없이 HTF 1h 필터만]
+  거래 39 승률 43.6% PF 0.94 수익률 -12.66% MDD 55.6%
+  청산사유: Stop Loss:27, Take Profit:12

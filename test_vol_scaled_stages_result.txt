@@ -1,0 +1,11 @@
+=== 15분봉 XRP (진입: squeeze_avg1.5x + ADX + 1h HTF 정배열) ===
+  [15m | 고정% 스테이지 (기존)] 거래 31 승률 54.8% PF 0.65 수익률 -33.65% MDD 44.7%
+      청산사유: Breakeven Stop:9, Partial Lock Stop:6, Stop Loss:16
+  [15m | BB폭 비례 스테이지 (신규)] 거래 30 승률 53.3% PF 0.90 수익률  -9.02% MDD 30.7%
+      청산사유: Breakeven Stop:8, Partial Lock Stop:8, Stop Loss:13, Trailing Stop:1
+
+=== 1시간봉 XRP (진입: squeeze_avg1.5x + ADX, HTF필터 없음-동일TF라 의미없음) ===
+  [1h | 고정% 스테이지 (기존)] 거래  7 승률 71.4% PF 0.62 수익률  -8.97% MDD 16.0%
+      청산사유: Breakeven Stop:3, Partial Lock Stop:2, Stop Loss:2
+  [1h | BB폭 비례 스테이지 (신규)] 거래  6 승률 66.7% PF 1.21 수익률  +5.20% MDD 12.1%
+      청산사유: Breakeven Stop:2, Partial Lock Stop:2, Stop Loss:2

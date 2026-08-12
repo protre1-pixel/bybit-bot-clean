@@ -1,0 +1,20 @@
+XRPUSDT 15분봉 17280개 (2026-02-08 08:45:00 ~ 2026-08-07 08:30:00)
+HMA600 유효 시작: 2026-02-14 20:15:00 (index 622)
+
+[trail 1%] 거래  99 승률 30.3% PF 0.33 수익률   -88.97% MDD  89.0% 최종시드    110.28
+  청산사유: Golden->Dead Flip:1, Trailing Stop:98
+[trail 2%] 거래  98 승률 32.7% PF 0.53 수익률   -93.19% MDD  93.7% 최종시드     68.05
+  청산사유: Dead->Golden Flip:1, Golden->Dead Flip:3, Trailing Stop:94
+[trail 3%] 거래  98 승률 33.7% PF 0.67 수익률   -95.41% MDD  96.6% 최종시드     45.86
+  청산사유: Dead->Golden Flip:17, Golden->Dead Flip:14, Trailing Stop:67
+[trail 5%] 거래  98 승률 30.6% PF 0.59 수익률   -99.09% MDD  99.5% 최종시드      9.11
+  청산사유: Dead->Golden Flip:35, Golden->Dead Flip:40, Trailing Stop:23
+[trail 8%] 거래  98 승률 32.7% PF 0.56 수익률   -98.85% MDD  99.5% 최종시드     11.52
+  청산사유: Dead->Golden Flip:48, Golden->Dead Flip:49, Trailing Stop:1
+
+=== 참고: 레버리지 1x(현물 기준)로 신호 자체의 순수 edge 확인 ===
+[trail 1%, 1x] 거래  99 승률 30.3% PF 0.35 수익률   -18.75% MDD  18.8%
+[trail 2%, 1x] 거래  98 승률 32.7% PF 0.63 수익률   -19.00% MDD  19.8%
+[trail 3%, 1x] 거래  98 승률 33.7% PF 0.78 수익률   -16.05% MDD  22.0%
+[trail 5%, 1x] 거래  98 승률 30.6% PF 0.70 수익률   -24.30% MDD  31.9%
+[trail 8%, 1x] 거래  98 승률 32.7% PF 0.75 수익률   -20.87% MDD  34.0%

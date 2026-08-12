@@ -6,6 +6,7 @@ from .state import (
     get_user_files,
     load_state,
     save_state,
+    state_transaction,
     load_trades,
     save_trades,
     DEFAULT_STATE
@@ -19,6 +20,7 @@ __all__ = [
     'get_user_files',
     'load_state',
     'save_state',
+    'state_transaction',
     'load_trades',
     'save_trades',
     'DEFAULT_STATE',

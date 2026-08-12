@@ -1,6 +1,6 @@
 """Bybit 지갑 잔액 조회 및 자금 검증"""
 import logging
-from app.config import bybit_client
+from app import config
 
 logger = logging.getLogger(__name__)
 
@@ -8,12 +8,12 @@ logger = logging.getLogger(__name__)
 def get_bybit_balance():
     """Bybit 실제 USDT 잔액 조회"""
     try:
-        if not bybit_client:
+        if not config.bybit_client:
             logger.error("[ERROR] Bybit 클라이언트 없음")
             return None
 
         # Spot 지갑 조회
-        response = bybit_client.get_wallet_balance(
+        response = config.bybit_client.get_wallet_balance(
             accountType="UNIFIED"
         )
 

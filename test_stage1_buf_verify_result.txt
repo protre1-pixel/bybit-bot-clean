@@ -1,0 +1,10 @@
+Stage1 trigger=1.5 고정, lock=0.3 고정, buffer만 스윕 (버그수정 후)
+S1buf= 0.15  거래 30 승률 46.7% PF 0.93 수익률  -9.33% MDD 39.9%  [Breakeven Stop:2, Partial Lock Stop:5, Stop Loss:20, Trailing Stop:3]
+S1buf= 1.00  거래 30 승률 46.7% PF 0.92 수익률 -10.15% MDD 39.9%  [Breakeven Stop:8, Stop Loss:20, Trailing Stop:2]
+S1buf= 1.20  거래 30 승률 46.7% PF 0.94 수익률  -7.80% MDD 39.9%  [Breakeven Stop:9, Stop Loss:20, Trailing Stop:1]
+S1buf= 1.50  거래 30 승률 46.7% PF 1.08 수익률 +10.97% MDD 39.9%  [Breakeven Stop:9, Stop Loss:20, Trailing Stop:1]
+S1buf= 1.80  거래 30 승률 46.7% PF 1.15 수익률 +22.57% MDD 39.9%  [Breakeven Stop:9, Stop Loss:20, Trailing Stop:1]
+S1buf= 2.00  거래 30 승률 46.7% PF 1.16 수익률 +25.82% MDD 39.9%  [Breakeven Stop:9, Stop Loss:20, Trailing Stop:1]
+S1buf= 2.50  거래 30 승률 46.7% PF 1.16 수익률 +25.82% MDD 39.9%  [Breakeven Stop:9, Stop Loss:20, Trailing Stop:1]
+S1buf= 3.00  거래 30 승률 46.7% PF 1.16 수익률 +25.82% MDD 39.9%  [Breakeven Stop:9, Stop Loss:20, Trailing Stop:1]
+S1buf= 4.00  거래 30 승률 46.7% PF 1.16 수익률 +25.82% MDD 39.9%  [Breakeven Stop:9, Stop Loss:20, Trailing Stop:1]

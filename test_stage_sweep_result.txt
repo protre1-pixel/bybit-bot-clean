@@ -1,0 +1,36 @@
+XRPUSDT 캔들 9600개 (2026-04-29 08:30:00 ~ 2026-08-07 08:15:00)
+Stage1/2/3 파라미터 스윕 (live_staging=True 고정)
+
+===== 진입: squeeze_avg 1.5x + ADX/DI (현재 라이브 진입) =====
+  [A: 현재(baseline)      S1=1.0 S2=2.0(lock50%) S3=5.0(trail30%,min3%)]
+    거래 59 승률 50.8% PF 0.69 수익률 -62.96% MDD 78.1%
+    청산사유: Breakeven Stop:15, Partial Lock Stop:11, Stop Loss:33
+  [B: lock 완화           S1=1.0 S2=2.0(lock30%) S3=5.0(trail30%,min3%)]
+    거래 58 승률 51.7% PF 0.79 수익률 -52.95% MDD 77.3%
+    청산사유: Breakeven Stop:15, Partial Lock Stop:7, Stop Loss:32, Trailing Stop:4
+  [C: 트리거 지연         S1=1.5 S2=3.0(lock50%) S3=6.0(trail30%,min3%)]
+    거래 58 승률 41.4% PF 0.67 수익률 -69.40% MDD 81.3%
+    청산사유: Breakeven Stop:9, Partial Lock Stop:7, Stop Loss:42
+  [D: 지연+완화 combo     S1=1.5 S2=3.0(lock30%) S3=6.0(trail30%,min3%)]
+    거래 57 승률 42.1% PF 0.70 수익률 -66.96% MDD 82.6%
+    청산사유: Breakeven Stop:9, Partial Lock Stop:5, Stop Loss:41, Trailing Stop:2
+  [E: 더 크게 지연+완화   S1=2.0 S2=4.0(lock30%) S3=8.0(trail30%,min3%)]
+    거래 54 승률 37.0% PF 0.72 수익률 -63.87% MDD 81.9%
+    청산사유: Breakeven Stop:6, Partial Lock Stop:5, Stop Loss:42, Trailing Stop:1
+
+===== 진입: squeeze(최저점) 1.15x + ADX/DI =====
+  [A: 현재(baseline)      S1=1.0 S2=2.0(lock50%) S3=5.0(trail30%,min3%)]
+    거래 68 승률 42.6% PF 0.55 수익률 -55.92% MDD 57.1%
+    청산사유: Breakeven Stop:15, Partial Lock Stop:11, Stop Loss:42
+  [B: lock 완화           S1=1.0 S2=2.0(lock30%) S3=5.0(trail30%,min3%)]
+    거래 59 승률 45.8% PF 0.90 수익률 -16.19% MDD 58.9%
+    청산사유: Breakeven Stop:16, Partial Lock Stop:6, Stop Loss:34, Trailing Stop:3
+  [C: 트리거 지연         S1=1.5 S2=3.0(lock50%) S3=6.0(trail30%,min3%)]
+    거래 65 승률 33.8% PF 0.71 수익률 -50.70% MDD 66.6%
+    청산사유: Breakeven Stop:9, Partial Lock Stop:4, Stop Loss:51, Trailing Stop:1
+  [D: 지연+완화 combo     S1=1.5 S2=3.0(lock30%) S3=6.0(trail30%,min3%)]
+    거래 64 승률 34.4% PF 0.70 수익률 -50.11% MDD 63.0%
+    청산사유: Breakeven Stop:9, Partial Lock Stop:3, Stop Loss:50, Trailing Stop:2
+  [E: 더 크게 지연+완화   S1=2.0 S2=4.0(lock30%) S3=8.0(trail30%,min3%)]
+    거래 66 승률 34.8% PF 0.60 수익률 -52.85% MDD 52.9%
+    청산사유: Breakeven Stop:6, Partial Lock Stop:2, Stop Loss:57, Trailing Stop:1

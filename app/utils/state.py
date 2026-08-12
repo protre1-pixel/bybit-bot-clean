@@ -3,6 +3,7 @@ import os
 import json
 import threading
 import logging
+from contextlib import contextmanager
 from filelock import FileLock
 from flask import request
 import jwt
@@ -97,6 +98,44 @@ def save_state(state_data, username=None):
                 json.dump(state_data, f, indent=2, default=str)
     except Exception as e:
         logger.error(f"[ERROR] 상태 저장 실패 ({username}): {e}")
+
+
+@contextmanager
+def state_transaction(username=None):
+    """상태 읽기→수정→쓰기를 하나의 락으로 묶어 레이스 컨디션 방지.
+
+    load_state()/save_state()를 따로 호출하면 그 사이 다른 스레드(백그라운드
+    가격 업데이트 루프 등)가 끼어들어 방금 저장한 변경을 덮어쓸 수 있다.
+    이 컨텍스트 매니저는 락을 잡은 채로 불러오기→콜백 실행→저장까지 끝내
+    그 틈을 없앤다. 상태를 읽고 수정한 뒤 다시 저장해야 하는 곳에서는
+    load_state()+save_state() 대신 이걸 써야 한다.
+    """
+    if username is None:
+        username = get_current_user() or 'guest'
+
+    user_files = get_user_files(username)
+    state_file = user_files['state']
+    lock = _get_file_lock(state_file)
+
+    with lock:
+        try:
+            if os.path.exists(state_file):
+                with open(state_file, 'r') as f:
+                    state = json.load(f)
+            else:
+                state = DEFAULT_STATE.copy()
+        except Exception as e:
+            logger.error(f"[ERROR] 상태 로드 실패 ({username}): {e}")
+            state = DEFAULT_STATE.copy()
+
+        yield state
+
+        try:
+            os.makedirs(os.path.dirname(state_file), exist_ok=True)
+            with open(state_file, 'w') as f:
+                json.dump(state, f, indent=2, default=str)
+        except Exception as e:
+            logger.error(f"[ERROR] 상태 저장 실패 ({username}): {e}")
 
 
 def load_trades(username=None):

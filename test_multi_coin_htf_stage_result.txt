@@ -1,0 +1,22 @@
+동일 조건(진입: squeeze_avg1.5x+ADX+1h HMA200/600 정배열, 청산: live_staging=True
+  STAGE1_TRIGGER=1.5/buf=2.0, STAGE2_LOCK_RATIO=0.3, 나머지 기본값)을 여러 코인에 적용
+
+[XRPUSDT]  (2026-04-29~2026-08-07)
+  거래 30 승률 46.7% PF 1.16 수익률 +25.82% MDD 39.9%
+  청산사유: Breakeven Stop:9, Stop Loss:20, Trailing Stop:1
+
+[BTCUSDT]  (2026-04-29~2026-08-07)
+  거래 28 승률 39.3% PF 0.46 수익률 -51.33% MDD 61.0%
+  청산사유: Breakeven Stop:3, Partial Lock Stop:1, Stop Loss:24
+
+[ETHUSDT]  (2026-04-29~2026-08-07)
+  거래 28 승률 35.7% PF 0.81 수익률 -29.08% MDD 46.2%
+  청산사유: Breakeven Stop:6, Partial Lock Stop:3, Stop Loss:18, Trailing Stop:1
+
+[SOLUSDT]  (2026-04-29~2026-08-07)
+  거래 19 승률 42.1% PF 0.78 수익률 -18.06% MDD 44.0%
+  청산사유: Breakeven Stop:4, Partial Lock Stop:2, Stop Loss:13
+
+[DOGEUSDT]  (2026-04-29~2026-08-07)
+  거래 24 승률 41.7% PF 0.79 수익률 -21.11% MDD 35.6%
+  청산사유: Breakeven Stop:9, Partial Lock Stop:1, Stop Loss:14

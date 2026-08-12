@@ -1,6 +1,6 @@
 """서비스 모듈"""
 from .auth_service import hash_password, verify_password, load_users, save_users
-from .coin_service import get_top_coins_by_volume, load_cached_coins, save_cached_coins
+from .coin_service import get_top_coins_by_volume, get_top_coins_by_volume_volatility, load_cached_coins, save_cached_coins
 from .price_service import (
     get_current_price,
     calculate_atr,
@@ -15,6 +15,7 @@ __all__ = [
     'load_users',
     'save_users',
     'get_top_coins_by_volume',
+    'get_top_coins_by_volume_volatility',
     'load_cached_coins',
     'save_cached_coins',
     'get_current_price',

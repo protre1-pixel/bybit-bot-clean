@@ -1,0 +1,17 @@
+XRPUSDT 1시간봉 2400개 (2026-04-29 13:00:00 ~ 2026-08-07 12:00:00)
+
+=== live_staging=True (실제 라이브 4단계 청산, Stage 파라미터는 기본값) ===
+[A: 스퀴즈 1.5x 돌파만 (ADX 없음, HTF 없음)]
+  거래 12 승률 58.3% PF 0.29 수익률 -33.61% MDD 34.8%
+  청산사유: Breakeven Stop:5, Partial Lock Stop:2, Stop Loss:5
+[B: 스퀴즈 1.5x + ADX 필터 (현재 라이브와 동일 조건, 타임프레임만 1h)]
+  거래  7 승률 71.4% PF 0.62 수익률  -8.97% MDD 16.0%
+  청산사유: Breakeven Stop:3, Partial Lock Stop:2, Stop Loss:2
+
+=== live_staging=False (참고: 단순화 청산, 신호 자체 품질만) ===
+[A: 스퀴즈 1.5x 돌파만 (ADX 없음, HTF 없음)]
+  거래 11 승률 54.5% PF 1.81 수익률 +83.60% MDD 29.0%
+  청산사유: Stop Loss:6, Take Profit:4, Trailing Stop:1
+[B: 스퀴즈 1.5x + ADX 필터 (현재 라이브와 동일 조건, 타임프레임만 1h)]
+  거래  6 승률 83.3% PF 6.20 수익률+117.84% MDD 22.7%
+  청산사유: Stop Loss:2, Take Profit:3, Trailing Stop:1

@@ -1,5 +1,6 @@
 """Bybit Bot 메인 실행 파일"""
 import logging
+import os
 
 # 로거 설정
 logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
@@ -13,5 +14,6 @@ if __name__ == '__main__':
     start_background_thread()
 
     # Flask 서버 시작
+    port = int(os.getenv('PORT', 5300))
     logger.info("[INIT] Flask 서버 시작...")
-    app.run(debug=False, host='0.0.0.0', port=5000, threaded=True)
+    app.run(debug=False, host='0.0.0.0', port=port, threaded=True)

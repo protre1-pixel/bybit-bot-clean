@@ -1,0 +1,26 @@
+XRPUSDT 15분봉 9600개 (2026-04-29 11:30:00 ~ 2026-08-07 11:15:00)
+진입 고정: squeeze_avg 1.5x + ADX필터 + 1시간봉 HMA200/600 정배열 필터
+Stage1/2/3 파라미터 스윕 (live_staging=True 고정)
+
+[A: 현재(baseline)      S1=1.0 S2=2.0(lock50%) S3=5.0(trail30%,min3%)]
+  거래 31 승률 54.8% PF 0.65 수익률 -33.65% MDD 44.7%
+  청산사유: Breakeven Stop:9, Partial Lock Stop:6, Stop Loss:16
+[B: lock 완화           S1=1.0 S2=2.0(lock30%) S3=5.0(trail30%,min3%)]
+  거래 31 승률 54.8% PF 0.85 수익률 -17.84% MDD 43.6%
+  청산사유: Breakeven Stop:9, Partial Lock Stop:3, Stop Loss:16, Trailing Stop:3
+[C: 트리거 지연         S1=1.5 S2=3.0(lock50%) S3=6.0(trail30%,min3%)]
+  거래 29 승률 48.3% PF 0.69 수익률 -29.72% MDD 44.0%
+  청산사유: Breakeven Stop:6, Partial Lock Stop:4, Stop Loss:19
+[D: 지연+완화 combo     S1=1.5 S2=3.0(lock30%) S3=6.0(trail30%,min3%)]
+  거래 29 승률 48.3% PF 0.72 수익률 -28.59% MDD 47.3%
+  청산사유: Breakeven Stop:6, Partial Lock Stop:3, Stop Loss:19, Trailing Stop:1
+[E: 더 크게 지연+완화   S1=2.0 S2=4.0(lock30%) S3=8.0(trail30%,min3%)]
+  거래 29 승률 44.8% PF 0.65 수익률 -34.15% MDD 46.1%
+  청산사유: Breakeven Stop:3, Partial Lock Stop:4, Stop Loss:22
+[F: 훨씬 더 여유        S1=3.0 S2=6.0(lock30%) S3=10.0(trail40%,min4%)]
+  거래 29 승률 44.8% PF 0.48 수익률 -44.77% MDD 51.5%
+  청산사유: Breakeven Stop:3, Partial Lock Stop:1, Stop Loss:25
+
+=== 참고: live_staging=False (동일 진입, 단순화 exit) ===
+  거래 30 승률 53.3% PF 1.42 수익률 +77.06% MDD 40.5%
+  청산사유: Stop Loss:19, Take Profit:11

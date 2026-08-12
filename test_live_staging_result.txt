@@ -1,0 +1,18 @@
+XRPUSDT 캔들 9600개 (2026-04-29 08:15:00 ~ 2026-08-07 08:00:00)
+(live_staging=True: 라이브 4단계 계단식 SL 그대로 재현 / False: 기존 단순 2단계, 참고용)
+
+[baseline: squeeze_avg 1.5x + ADX/DI, live_staging=False(기존)]
+  거래 60 승률 45.0% PF 1.02 수익률  +8.44% MDD 76.0%
+  청산사유: Stop Loss:41, Take Profit:19
+
+[baseline: squeeze_avg 1.5x + ADX/DI, live_staging=True(신규)]
+  거래 59 승률 50.8% PF 0.69 수익률 -62.96% MDD 78.1%
+  청산사유: Breakeven Stop:15, Partial Lock Stop:11, Stop Loss:33
+
+[squeeze(최저점) 1.15x + ADX/DI, live_staging=False(기존)]
+  거래 72 승률 43.1% PF 1.01 수익률  +1.31% MDD 52.7%
+  청산사유: Stop Loss:50, Take Profit:22
+
+[squeeze(최저점) 1.15x + ADX/DI, live_staging=True(신규)]
+  거래 68 승률 42.6% PF 0.55 수익률 -55.92% MDD 57.1%
+  청산사유: Breakeven Stop:15, Partial Lock Stop:11, Stop Loss:42

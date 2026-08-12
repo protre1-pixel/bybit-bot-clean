@@ -1,0 +1,55 @@
+XRPUSDT 일봉 1912개 (2021-05-13 ~ 2026-08-06)
+HMA600 유효 시작: 2023-01-25 (index 622)
+
+[trail 5%] 거래  8 승률 37.5% PF 0.74 수익률  -23.81% MDD 40.9% 최종시드  761.86
+  청산사유: Trailing Stop:8
+    short 2023-10-07~2023-10-09  entry=0.5215 exit=0.5071  pnl%= +2.75  profit= +198.13  Trailing Stop
+    long  2023-12-19~2023-12-24  entry=0.6049 exit=0.6014  pnl%= -0.57  profit=  -61.21  Trailing Stop
+    short 2024-01-20~2024-01-22  entry=0.5533 exit=0.5429  pnl%= +1.89  profit= +151.66  Trailing Stop
+    long  2024-08-27~2024-08-28  entry=0.5664 exit=0.5550  pnl%= -2.01  profit= -205.32  Trailing Stop
+    short 2025-04-18~2025-04-21  entry=2.0604 exit=2.1386  pnl%= -3.80  profit= -317.45  Trailing Stop
+    long  2025-09-02~2025-09-14  entry=2.8607 exit=3.0271  pnl%= +5.82  profit= +327.73  Trailing Stop
+    short 2025-10-11~2025-10-12  entry=2.3805 exit=2.4243  pnl%= -1.84  profit= -160.08  Trailing Stop
+    long  2026-06-27~2026-07-01  entry=1.0469 exit=1.0224  pnl%= -2.34  profit= -171.61  Trailing Stop
+
+[trail 8%] 거래  8 승률 50.0% PF 0.46 수익률  -63.40% MDD 77.9% 최종시드  365.99
+  청산사유: Trailing Stop:8
+    short 2023-10-07~2023-10-16  entry=0.5215 exit=0.5103  pnl%= +2.15  profit= +152.82  Trailing Stop
+    long  2023-12-19~2023-12-26  entry=0.6049 exit=0.5976  pnl%= -1.20  profit= -113.40  Trailing Stop
+    short 2024-01-20~2024-01-26  entry=0.5533 exit=0.5355  pnl%= +3.22  profit= +242.72  Trailing Stop
+    long  2024-08-27~2024-09-04  entry=0.5664 exit=0.5375  pnl%= -5.11  profit= -501.84  Trailing Stop
+    short 2025-04-18~2025-04-22  entry=2.0604 exit=2.1997  pnl%= -6.76  profit= -402.23  Trailing Stop
+    long  2025-09-02~2025-09-22  entry=2.8607 exit=2.9315  pnl%= +2.47  profit=  +67.05  Trailing Stop
+    short 2025-10-11~2025-10-12  entry=2.3805 exit=2.4936  pnl%= -4.75  profit= -162.30  Trailing Stop
+    long  2026-06-27~2026-07-08  entry=1.0469 exit=1.0891  pnl%= +4.03  profit=  +83.16  Trailing Stop
+
+[trail 12%] 거래  8 승률 12.5% PF 0.09 수익률  -98.91% MDD 98.9% 최종시드   10.90
+  청산사유: Trailing Stop:8
+    short 2023-10-07~2023-10-20  entry=0.5215 exit=0.5292  pnl%= -1.48  profit= -118.99  Trailing Stop
+    long  2023-12-19~2024-01-03  entry=0.6049 exit=0.5802  pnl%= -4.09  profit= -277.25  Trailing Stop
+    short 2024-01-20~2024-02-14  entry=0.5533 exit=0.5411  pnl%= +2.21  profit=  +95.09  Trailing Stop
+    long  2024-08-27~2024-09-06  entry=0.5664 exit=0.5141  pnl%= -9.23  profit= -489.78  Trailing Stop
+    short 2025-04-18~2025-04-23  entry=2.0604 exit=2.2812  pnl%=-10.72  profit= -169.77  Trailing Stop
+    long  2025-09-02~2025-09-22  entry=2.8607 exit=2.8040  pnl%= -1.98  profit=   -6.16  Trailing Stop
+    short 2025-10-11~2025-10-13  entry=2.3805 exit=2.5860  pnl%= -8.63  profit=  -21.72  Trailing Stop
+    long  2026-06-27~2026-08-06  entry=1.0469 exit=1.0417  pnl%= -0.49  profit=   -0.52  Trailing Stop
+
+[trail 18%] 거래  7 승률 28.6% PF 0.01 수익률 -100.16% MDD101.3% 최종시드   -1.62
+  청산사유: Trailing Stop:7
+    short 2023-10-07~2023-10-24  entry=0.5215 exit=0.5575  pnl%= -6.91  profit= -526.71  Trailing Stop
+    long  2023-12-19~2024-01-03  entry=0.6049 exit=0.5406  pnl%=-10.63  profit= -381.08  Trailing Stop
+    short 2024-01-20~2024-02-15  entry=0.5533 exit=0.5701  pnl%= -3.03  profit=  -21.71  Trailing Stop
+    long  2024-08-27~2024-10-02  entry=0.5664 exit=0.5463  pnl%= -3.55  profit=  -19.36  Trailing Stop
+    short 2025-04-18~2025-05-09  entry=2.0604 exit=2.4034  pnl%=-16.65  profit=  -64.28  Trailing Stop
+    long  2025-09-02~2025-10-10  entry=2.8607 exit=2.6128  pnl%= -8.66  profit=   +8.65  Trailing Stop
+    short 2025-10-11~2025-10-25  entry=2.3805 exit=2.5808  pnl%= -8.41  profit=   +2.87  Trailing Stop
+
+[trail 25%] 거래  7 승률 42.9% PF 0.00 수익률 -100.00% MDD100.2% 최종시드    0.01
+  청산사유: Trailing Stop:7
+    short 2023-10-07~2023-10-31  entry=0.5215 exit=0.5906  pnl%=-13.26  profit=-1002.38  Trailing Stop
+    long  2023-12-19~2024-01-03  entry=0.6049 exit=0.4945  pnl%=-18.26  profit=   +3.27  Trailing Stop
+    short 2024-01-20~2024-02-28  entry=0.5533 exit=0.6039  pnl%= -9.14  profit=   -0.62  Trailing Stop
+    long  2024-08-27~2024-10-25  entry=0.5664 exit=0.4997  pnl%=-11.78  profit=   -0.25  Trailing Stop
+    short 2025-04-18~2025-05-12  entry=2.0604 exit=2.5460  pnl%=-23.57  profit=   -0.05  Trailing Stop
+    long  2025-09-02~2025-10-10  entry=2.8607 exit=2.3898  pnl%=-16.46  profit=   +0.03  Trailing Stop
+    short 2025-10-11~2025-11-24  entry=2.3805 exit=2.2753  pnl%= +4.42  profit=   +0.00  Trailing Stop

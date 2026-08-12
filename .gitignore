@@ -8,6 +8,7 @@ __pycache__/
 # Environment
 .env
 .env.local
+secrets.env
 *.log
 app.log
 server.log
@@ -27,6 +28,7 @@ settings.json
 # Cache files
 selected_coins_cache.json
 *.lock
+kline_cache/
 
 # Temporary files
 token.txt

@@ -28,9 +28,13 @@ def start_trading():
     if not available_coins:
         return jsonify({"error": "선별된 코인이 없습니다"}), 400
 
+    # 기존 코인 데이터 모두 삭제 (새로 시작)
+    for key in list(state.keys()):
+        if isinstance(state[key], dict) and "last_close_time" in state[key]:
+            del state[key]  # 모든 코인 데이터 제거
+
     # 선별된 코인을 state에 설정
     state["available_coins"] = available_coins
-    state["coins"] = available_coins  # 활성 코인으로도 설정 (모니터링용)
 
     total_seed = state.get("total_seed", 3000)
 
@@ -50,41 +54,40 @@ def start_trading():
     max_trades = state.get("max_trades", 3)
     wallet_seed = total_seed / max_trades if max_trades > 0 else 0
 
-    # 지갑 생성
-    if "wallets" not in state:
-        state["wallets"] = {}
+    # 기존 지갑 모두 초기화 (새로운 금액으로 재분배)
+    state["wallets"] = {}
 
+    # 지갑 생성 (새로 분배)
     for wallet_id in range(1, max_trades + 1):
         wallet_key = f"wallet_{wallet_id}"
-        if wallet_key not in state["wallets"]:
-            state["wallets"][wallet_key] = {
-                "initial_seed": wallet_seed,
-                "current_seed": wallet_seed,
-                "assigned_coin": None,
-                "is_active": False,
-                "entry_percent": 75,
-                "leverage": 10,
-                "tp": 2.0,
-                "sl": 1.5
-            }
+        state["wallets"][wallet_key] = {
+            "initial_seed": wallet_seed,
+            "current_seed": wallet_seed,
+            "assigned_coin": None,
+            "is_active": False,
+            "entry_percent": 75,
+            "leverage": 10,
+            "tp": 2.0,
+            "sl": 3.0
+        }
 
     # 기존 coin_settings 유지 (하위 호환성)
     if "coin_settings" not in state:
         state["coin_settings"] = {}
 
-    for coin in state.get("coins", []):
+    for coin in state.get("available_coins", []):
         if coin not in state["coin_settings"]:
             state["coin_settings"][coin] = {}
 
     state["trading_enabled"] = True
     save_state(state, username)
 
-    logger.info(f"[INFO] {username} 거래 시작 - 선별 코인: {state['coins']}, 지갑: {max_trades}개, 각 지갑: ${wallet_seed:.2f}, 모드: {state.get('mode')}")
+    logger.info(f"[INFO] {username} 거래 시작 - 선별 코인: {state['available_coins']}, 지갑: {max_trades}개, 각 지갑: ${wallet_seed:.2f}, 모드: {state.get('mode')}")
     return jsonify({
         "success": True,
         "message": "거래가 시작되었습니다",
         "trading_enabled": True,
-        "coins": state["coins"],
+        "coins": state["available_coins"],
         "max_trades": max_trades,
         "wallet_seed": round(wallet_seed, 2),
         "wallets_created": max_trades
@@ -118,7 +121,7 @@ def trading_status():
 
     return jsonify({
         "trading_enabled": state.get("trading_enabled", False),
-        "coins": state.get("coins", []),
+        "coins": state.get("available_coins", []),
         "mode": state.get("mode", "paper")
     })
 
@@ -138,12 +141,11 @@ def reset_all():
         # 파일 초기화
         save_trades([], username)
 
-        # 현재 활성 코인 목록 저장
-        active_coins = state.get("coins", [])
-
-        # 모든 코인의 상태 초기화
-        for coin in active_coins:
-            if coin in state:
+        # state의 모든 코인의 상태 초기화 (과거 거래 코인도 포함)
+        for key in list(state.keys()):
+            if isinstance(state[key], dict) and "current_price" in state[key]:
+                # 이것은 코인 데이터입니다
+                coin = key
                 state[coin]["position"] = None
                 state[coin]["entry_price"] = None
                 state[coin]["entry_time"] = None
@@ -156,9 +158,37 @@ def reset_all():
                 state[coin]["sl_price"] = None
                 state[coin]["tp_price"] = None
                 state[coin]["last_close_time"] = None
+                state[coin]["squeeze_status"] = "normal"
+                state[coin]["prev_band_width"] = None
+                state[coin]["squeeze_width"] = None
+                state[coin]["profit_mode"] = "normal"
+                state[coin]["trailing_max_price"] = None
 
         # 모든 코인 삭제
-        state["coins"] = []
+        state["available_coins"] = []
+        state["coin_settings"] = {}  # coin_settings도 초기화
+
+        # 거래 비활성화 (UI 버튼도 거래시작으로 변경되도록)
+        state["trading_enabled"] = False
+
+        # 모든 지갑 재분배 (현재 설정에 맞게)
+        max_trades = state.get("max_trades", 3)
+        total_seed = state.get("total_seed", 3000)
+        wallet_seed = total_seed / max_trades if max_trades > 0 else 0
+
+        state["wallets"] = {}
+        for wallet_id in range(1, max_trades + 1):
+            wallet_key = f"wallet_{wallet_id}"
+            state["wallets"][wallet_key] = {
+                "initial_seed": wallet_seed,
+                "current_seed": wallet_seed,
+                "assigned_coin": None,
+                "is_active": False,
+                "entry_percent": 75,
+                "leverage": 10,
+                "tp": 2.0,
+                "sl": 3.0
+            }
 
         # 상태 저장
         save_state(state, username)

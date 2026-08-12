@@ -47,7 +47,7 @@ def register():
         # 새 사용자의 초기 상태 생성
         initial_state = {
             "mode": "paper",
-            "coins": [],
+            "available_coins": [],
             "total_seed": 3000,
             "max_trades": 5,
             "trading_enabled": False
@@ -105,7 +105,7 @@ def login():
         state_data = load_state(username)
 
         # 상태에 없는 코인들의 데이터만 초기화 (기존 코인 유지!)
-        for coin in state_data.get("coins", []):
+        for coin in state_data.get("available_coins", []):
             if coin not in state_data:
                 state_data[coin] = create_default_coin_state(coin)
 

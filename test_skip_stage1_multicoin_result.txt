@@ -1,0 +1,34 @@
+데이터 로딩 중...
+로딩 완료
+
+=== A: 고정% 4단계 (기존 베이스라인) ===
+  XRPUSDT    거래 31 승률 54.8% PF 0.65 수익률 -33.65% MDD 44.7%  [Breakeven Stop:9, Partial Lock Stop:6, Stop Loss:16]
+  BTCUSDT    거래 30 승률 46.7% PF 0.34 수익률 -55.10% MDD 58.7%  [Breakeven Stop:6, Partial Lock Stop:3, Stop Loss:21]
+  ETHUSDT    거래 29 승률 37.9% PF 0.53 수익률 -55.82% MDD 56.2%  [Breakeven Stop:3, Partial Lock Stop:8, Stop Loss:18]
+  SOLUSDT    거래 19 승률 52.6% PF 0.58 수익률 -24.02% MDD 28.6%  [Breakeven Stop:7, Partial Lock Stop:3, Stop Loss:9]
+  DOGEUSDT   거래 24 승률 54.2% PF 0.33 수익률 -50.32% MDD 50.5%  [Breakeven Stop:9, Partial Lock Stop:4, Stop Loss:11]
+  --> 평균수익률  -43.78%  평균PF  0.49  플러스코인 0/5
+
+=== B: 고정% + 1단계 스킵 (0→2→3) ===
+  XRPUSDT    거래 30 승률 43.3% PF 0.76 수익률 -26.18% MDD 42.0%  [Partial Lock Stop:7, Stop Loss:23]
+  BTCUSDT    거래 28 승률 39.3% PF 0.35 수익률 -56.73% MDD 62.6%  [Partial Lock Stop:3, Stop Loss:25]
+  ETHUSDT    거래 29 승률 34.5% PF 0.67 수익률 -47.89% MDD 55.8%  [Partial Lock Stop:8, Stop Loss:20, Trailing Stop:1]
+  SOLUSDT    거래 19 승률 31.6% PF 0.51 수익률 -40.72% MDD 44.0%  [Partial Lock Stop:4, Stop Loss:15]
+  DOGEUSDT   거래 24 승률 33.3% PF 0.35 수익률 -60.37% MDD 61.2%  [Partial Lock Stop:5, Stop Loss:19]
+  --> 평균수익률  -46.38%  평균PF  0.53  플러스코인 0/5
+
+=== C: BB폭비례 4단계 ===
+  XRPUSDT    거래 30 승률 53.3% PF 0.90 수익률  -9.02% MDD 30.7%  [Breakeven Stop:8, Partial Lock Stop:8, Stop Loss:13, Trailing Stop:1]
+  BTCUSDT    거래 30 승률 40.0% PF 0.32 수익률 -54.20% MDD 55.3%  [Breakeven Stop:9, Partial Lock Stop:4, Stop Loss:16, Trailing Stop:1]
+  ETHUSDT    거래 29 승률 41.4% PF 0.43 수익률 -56.76% MDD 56.8%  [Breakeven Stop:8, Partial Lock Stop:6, Stop Loss:15]
+  SOLUSDT    거래 19 승률 52.6% PF 0.50 수익률 -34.97% MDD 38.5%  [Breakeven Stop:6, Partial Lock Stop:3, Stop Loss:9, Trailing Stop:1]
+  DOGEUSDT   거래 24 승률 58.3% PF 0.38 수익률 -46.49% MDD 49.6%  [Breakeven Stop:8, Partial Lock Stop:6, Stop Loss:10]
+  --> 평균수익률  -40.29%  평균PF  0.51  플러스코인 0/5
+
+=== D: BB폭비례 + 1단계 스킵 (0→2→3) ===
+  XRPUSDT    거래 30 승률 50.0% PF 0.91 수익률 -11.41% MDD 40.4%  [Partial Lock Stop:11, Stop Loss:18, Trailing Stop:1]
+  BTCUSDT    거래 29 승률 41.4% PF 0.27 수익률 -59.59% MDD 62.0%  [Partial Lock Stop:8, Stop Loss:21]
+  ETHUSDT    거래 29 승률 34.5% PF 0.63 수익률 -49.33% MDD 53.1%  [Partial Lock Stop:9, Stop Loss:20]
+  SOLUSDT    거래 19 승률 31.6% PF 0.41 수익률 -47.79% MDD 53.0%  [Partial Lock Stop:3, Stop Loss:15, Trailing Stop:1]
+  DOGEUSDT   거래 24 승률 41.7% PF 0.43 수익률 -50.38% MDD 53.0%  [Partial Lock Stop:9, Stop Loss:15]
+  --> 평균수익률  -43.70%  평균PF  0.53  플러스코인 0/5
