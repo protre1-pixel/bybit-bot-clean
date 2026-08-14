@@ -74,12 +74,16 @@ HTF_TREND_CACHE_SEC = 300  # HMA200/600 진입필터 재조회 주기(초, API �
 
 
 def apply_entry_filters(symbol, coin_key, signal, state, price):
-    """2026-08-12: 진입필터를 "가격 vs HMA200 하나"에서 "HMA200/600 정배열/역배열"로 재교체
-    (사용자 판단 - "캔들이 롱신호인데 200/600일선이 정방향이면(정배열) 가격이 200일보다
-    아래 있어도 롱 진입, 숏은 반대"). 가격이 일시적으로 200선 아래(위)로 눌린 눌림목
-    구간이어도 큰 추세(HMA200/600 골든/데드크로스)가 살아있으면 진입 허용.
-    backtest_hma_regime_filter.py / backtest_15m_regime_sweep.py / backtest_15m_walkforward.py
-    로 15분봉(sq=0.7/bo=1.6) 기준 검증 - 워크포워드에서도 PF>1 유지 확인.
+    """2026-08-15: "전략#2"로 교체 - 기존(2026-08-12)엔 브레이크아웃 캔들의 몸통(양봉/음봉)으로
+    방향을 먼저 정하고, HMA200/600 정배열과 불일치하면(예: 양봉인데 역배열) 진입을 취소했음.
+    이 버전은 캔들 방향을 아예 보지 않고, 브레이크아웃이 뜬 순간의 HMA200/600 정배열(up)/
+    역배열(down) 부호로 방향을 곧바로 결정해서 반환. 캔들-HMA 불일치로 인한 "취소, 재대기"가
+    구조적으로 사라짐(HMA 계산 불가 시에만 취소로 남음). 백테스트(backtest_archive/
+    backtest_current_live.py의 use_hma_direction_only, test_regime_direction_and_exit_xrp_1y.py,
+    XRP 15분봉 1년)에서 기존 대비 PF 2.35→3.29, 승률 76.0%→83.0%, 거래당 평균수익
+    +0.503%→+0.824%로 뚜렷한 개선 확인 후 사용자 판단으로 적용. signal 인자는 더 이상 방향
+    판정에 쓰지 않음(호출부 시그니처 호환용으로만 유지). 청산(exit) 로직은 이 변경과 무관하게
+    완전히 그대로 유지.
     캐시에는 추세 판정 결과("up"/"down"/None)를 저장 (가격과 무관하게 HMA200/600 자체가
     바뀌어야 갱신되므로 매 폴링 재계산할 필요 없음)."""
     from app.services.price_service import get_htf_trend
@@ -99,15 +103,11 @@ def apply_entry_filters(symbol, coin_key, signal, state, price):
         logger.info(f"[FILTER] {coin_key}: HMA200/600 정배열 계산 불가 → 진입 취소")
         return None
 
-    trend_ok = (
-        (signal == "long" and htf_trend == "up") or
-        (signal == "short" and htf_trend == "down")
-    )
-    if not trend_ok:
-        logger.info(f"[FILTER] {coin_key}: HMA200/600 {htf_trend} 배열, 신호({signal})와 반대 → 취소")
-        return None
-
-    return signal
+    if htf_trend == "up":
+        return "long"
+    elif htf_trend == "down":
+        return "short"
+    return None
 
 
 def check_bollinger_band_signal(symbol, coin_key, state):
@@ -176,17 +176,14 @@ def check_bollinger_band_signal(symbol, coin_key, state):
 
             # Breakout 감지: 스퀴즈 구간 최저점 폭 대비 급확장됐을 때 즉시 발동 (확인봉 없음)
             if current_width > squeeze_min * BREAKOUT_MULTIPLIER:
-                # 방향 판정: 확장이 확인된 캔들의 몸통 방향 (양봉=롱, 음봉=숏)
-                signal = None
-                if candle_close > candle_open:
-                    signal = "long"
-                elif candle_close < candle_open:
-                    signal = "short"
-
+                # 2026-08-15 "전략#2": 캔들 몸통(양봉/음봉)은 더 이상 방향 판정에 쓰지 않음.
+                # 브레이크아웃이 뜬 순간의 HMA200/600 정배열(up)/역배열(down) 부호로 방향을
+                # apply_entry_filters()에서 바로 결정 (백테스트 backtest_archive/
+                # test_regime_direction_and_exit_xrp_1y.py에서 PF 2.35→3.29, 승률
+                # 76.0%→83.0%로 개선 확인). 청산 로직은 완전히 그대로 유지.
                 state[coin_key]["squeeze_status"] = "normal"
 
-                if signal:
-                    signal = apply_entry_filters(symbol, coin_key, signal, state, candle_close)
+                signal = apply_entry_filters(symbol, coin_key, None, state, candle_close)
 
                 if signal:
                     logger.info(
@@ -195,8 +192,8 @@ def check_bollinger_band_signal(symbol, coin_key, state):
                     )
                     return signal
                 else:
-                    # 도지(방향 불명확) 또는 ADX/HTF 필터 불통과 → 재대기 (이미 normal로 리셋됨)
-                    logger.info(f"[BREAKOUT] {coin_key}: 밴드 확장했지만 방향 불명확 또는 필터 불통과 → 진입 취소, 재대기")
+                    # HMA200/600 정배열 판정 불가 → 재대기 (이미 normal로 리셋됨)
+                    logger.info(f"[BREAKOUT] {coin_key}: 밴드 확장했지만 HMA200/600 정배열 판정 불가 → 진입 취소, 재대기")
 
         return None
 
