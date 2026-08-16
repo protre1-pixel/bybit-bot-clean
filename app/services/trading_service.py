@@ -14,6 +14,20 @@ SQUEEZE_ENTER_MULT = 0.7  # 폭이 평균의 이 비율 이하로 눌리면 스�
 # HMA 갭 추세추종) 전부 15분봉으로 통일해서 시간대 혼선 방지.
 SQUEEZE_TIMEFRAME = 15  # 스퀴즈/브레이크아웃 신호 + 진입필터 + normal단계 HMA200 하드룰 공통 타임프레임
 
+# 2026-08-16: backtest_archive/test_stallexit_fastbo_xrp_1y.py(XRP 15분봉 365일)로 검증한
+# 최종 조합을 실거래에 반영. 기존(스퀴즈 상태머신 단독)에 아래 두 가지를 추가:
+#   1) fast_breakout: 스퀴즈 선행조건(폭이 평균 이하로 눌림) 없이도, normal 상태에서
+#      FAST_BREAKOUT_LOOKBACK캔들 전 폭 대비 지금 폭이 BREAKOUT_MULTIPLIER배 넘게 급확장하면
+#      즉시 브레이크아웃으로 인정(스퀴즈 경로와 별개의 보조 경로). HMA200 Break 청산 비중을
+#      19.9%→13.2%로 줄이면서 거래기회 자체도 늘림.
+#   2) price_alignment_filter: apply_entry_filters에서 방향(HMA200/600 정배열 부호) 확정 후,
+#      "가격도 이미 그 방향으로 완전히 정배열"(롱: price>HMA200>HMA600, 숏: 반대)된 상태일
+#      때만 진입 허용 - 눌림목(진입 직후 HMA200 반대쪽에 있어 곧바로 0단계 하드룰에 걸리는
+#      진입) 자체를 원천 차단.
+# 두 가지 다 backtest_current_live.py의 use_fast_breakout / use_price_alignment_filter 옵션과
+# 동일 로직. sq=0.7/bo=1.6 + 이 조합으로 XRP 231건 검증: PF 1.35, MDD 37.6%, 복리 +427.37%.
+FAST_BREAKOUT_LOOKBACK = 2  # 스퀴즈 미충족 시 비교할 "N캔들 전" 폭 (BREAKOUT_MULTIPLIER 재사용)
+
 # ── 수익 보호 단계 (Profit Staging) ────────────────────────────────
 # 2026-08-05: 수익이 났다가 다시 손실로 반전되어 손절당하는 문제(SOXL, HOME 등 실거래
 # 확인됨 - +2~3% 수익 구간까지 갔다가 그대로 반납하고 손실로 마감)를 막기 위해 도입.
@@ -65,6 +79,18 @@ HMA_GAP_CACHE_SEC = 60         # HMA 갭 재계산 주기(초)
 PROFIT_LOCK_TRIGGER_PCT = 0.5
 PROFIT_LOCK_RATIO = 0.85
 
+# 2026-08-16: giveback 진단 결과, 손실 대부분이 peak_pct < PROFIT_LOCK_TRIGGER_PCT(즉 profit_lock
+# 트리거도 못 찍는) "초반 무동력" 거래 67건(비복리 $-8,136.61)에서 나온다는 게 확인됨. 반면 그
+# 트리거를 넘긴 거래는 이미 profit_lock으로 반납이 거의 없어서(2%+ 그룹도 평균 0.87%p만 반납)
+# trend_follow 트레일링 자체를 더 조이는 건 잘 달리는 추세만 건드릴 위험이 큼. 그래서 STALL_EXIT
+# 조건을 PROFIT_LOCK_TRIGGER_PCT에 정확히 맞춰서, "이미 있는" stall_exit 옵션으로 그 67건 그룹만
+# 선택적으로 SL을 조임 - 잘 달리는 거래는 이 조건에 걸리기 전에 이미 peak가 올라가 있어 전혀 영향
+# 없음. backtest_archive/test_stallexit_fastbo_xrp_1y.py(XRP 15분봉 365일)에서 PF 1.13→1.35,
+# MDD 61.5%→37.6%, 복리수익률 +188.91%→+427.37%로 개선 확인 후 적용.
+STALL_EXIT_CANDLES = 8         # 진입 후 이 캔들수(15분봉×8=2시간) 지나도록 미달이면 SL 조임 대상
+STALL_EXIT_MIN_PEAK_PCT = 0.5  # PROFIT_LOCK_TRIGGER_PCT와 동일 기준 (그 전까지 못 찍은 거래만 대상)
+STALL_EXIT_SL_PCT = 0.4        # 조여지는 SL 폭 (진입가 대비 %, 기존 SL이 더 타이트하면 유지)
+
 STAGE_LABEL = {
     "trend_follow": "Trend Follow",
 }
@@ -84,30 +110,56 @@ def apply_entry_filters(symbol, coin_key, signal, state, price):
     +0.503%→+0.824%로 뚜렷한 개선 확인 후 사용자 판단으로 적용. signal 인자는 더 이상 방향
     판정에 쓰지 않음(호출부 시그니처 호환용으로만 유지). 청산(exit) 로직은 이 변경과 무관하게
     완전히 그대로 유지.
-    캐시에는 추세 판정 결과("up"/"down"/None)를 저장 (가격과 무관하게 HMA200/600 자체가
-    바뀌어야 갱신되므로 매 폴링 재계산할 필요 없음)."""
-    from app.services.price_service import get_htf_trend
+    2026-08-16 price_alignment_filter 추가: 방향(정배열 부호)만으로 진입하면 가격 자체는 아직
+    HMA200 반대쪽(눌림목)에 있는 채로 진입하는 케이스가 생겨서, 진입 직후 0단계 HMA200 하드룰에
+    바로 걸려 즉시청산되는 문제가 있었음. 그래서 방향 확정 후 "가격도 이미 그 방향으로 완전히
+    정배열"(롱: price>HMA200>HMA600, 숏: price<HMA200<HMA600)된 상태일 때만 진입을 허용하도록
+    추가 필터를 얹음(backtest_current_live.py의 use_hma_direction_only + use_price_alignment_filter
+    조합과 동일 로직, test_stallexit_fastbo_xrp_1y.py로 최종 검증).
+    캐시에는 HMA200/HMA600 raw 값을 저장 (가격과 무관하게 HMA 자체가 바뀌어야 갱신되므로 매
+    폴링 재계산할 필요 없음 - price 정배열 판정은 캐시된 HMA값과 매 폴링의 실시간 price로 함)."""
+    from app.services.price_service import calculate_hma
 
-    # ── HMA200/600 정배열 캐싱 (HTF_TREND_CACHE_SEC마다만 재조회) ──
+    # ── HMA200/HMA600 캐싱 (HTF_TREND_CACHE_SEC마다만 재조회) ──
     # 2026-08-12: normal단계 HMA200 하드룰이 쓰는 "htf_trend_cache"(단일 HMA200 값)와
     # 이름 충돌 방지를 위해 별도 캐시 키(entry_regime_cache) 사용.
     now_ts = datetime.now().timestamp()
     cache = state[coin_key].get("entry_regime_cache") or {}
-    if "trend" in cache and cache.get("ts") and (now_ts - cache["ts"]) < HTF_TREND_CACHE_SEC:
-        htf_trend = cache.get("trend")
+    if "hma200" in cache and cache.get("ts") and (now_ts - cache["ts"]) < HTF_TREND_CACHE_SEC:
+        hma200_now = cache.get("hma200")
+        hma600_now = cache.get("hma600")
     else:
-        htf_trend = get_htf_trend(symbol, fast_period=200, slow_period=600, timeframe=SQUEEZE_TIMEFRAME)
-        state[coin_key]["entry_regime_cache"] = {"trend": htf_trend, "ts": now_ts}
+        hma200_now = calculate_hma(symbol, period=200, timeframe=SQUEEZE_TIMEFRAME)
+        hma600_now = calculate_hma(symbol, period=600, timeframe=SQUEEZE_TIMEFRAME)
+        state[coin_key]["entry_regime_cache"] = {"hma200": hma200_now, "hma600": hma600_now, "ts": now_ts}
 
-    if htf_trend is None:
-        logger.info(f"[FILTER] {coin_key}: HMA200/600 정배열 계산 불가 → 진입 취소")
+    if hma200_now is None or hma600_now is None:
+        logger.info(f"[FILTER] {coin_key}: HMA200/600 계산 불가 → 진입 취소")
         return None
 
-    if htf_trend == "up":
-        return "long"
-    elif htf_trend == "down":
-        return "short"
-    return None
+    if hma200_now > hma600_now:
+        htf_trend = "up"
+    elif hma200_now < hma600_now:
+        htf_trend = "down"
+    else:
+        htf_trend = None
+
+    if htf_trend is None:
+        logger.info(f"[FILTER] {coin_key}: HMA200/600 정배열 판정 불가(횡보) → 진입 취소")
+        return None
+
+    direction = "long" if htf_trend == "up" else "short"
+
+    aligned = (
+        (direction == "long" and price is not None and price > hma200_now > hma600_now) or
+        (direction == "short" and price is not None and price < hma200_now < hma600_now)
+    )
+    if not aligned:
+        logger.info(f"[FILTER] {coin_key}: regime={htf_trend}이지만 가격 정배열 불일치(눌림목, "
+                    f"price={price}, hma200={hma200_now:.6f}, hma600={hma600_now:.6f}) → 진입 취소")
+        return None
+
+    return direction
 
 
 def check_bollinger_band_signal(symbol, coin_key, state):
@@ -155,6 +207,16 @@ def check_bollinger_band_signal(symbol, coin_key, state):
         avg_width = width_info["avg_width"]
         candle_open = width_info["candle_open"]
         candle_close = width_info["candle_close"]
+        candle_time = width_info["candle_time"]
+
+        # 2026-08-16: fast_breakout용 폭 히스토리 - 완성봉이 바뀔 때만 append(중복 방지).
+        # 매 폴링(2초)마다 같은 완성봉을 반복 계산하므로 candle_time으로 새 캔들 여부 판단.
+        width_history = state[coin_key].get("width_history") or []
+        if not width_history or width_history[-1].get("time") != candle_time:
+            width_history.append({"time": candle_time, "width": current_width})
+            if len(width_history) > 10:
+                width_history = width_history[-10:]
+            state[coin_key]["width_history"] = width_history
 
         # 2. Squeeze/Breakout 상태 추적
         squeeze_status = state[coin_key].get("squeeze_status", "normal")
@@ -166,6 +228,22 @@ def check_bollinger_band_signal(symbol, coin_key, state):
                 state[coin_key]["squeeze_status"] = "squeeze"
                 state[coin_key]["squeeze_width"] = current_width
                 logger.info(f"[SQUEEZE] {coin_key}: Squeeze 감지 (폭: {current_width:.6f}, 평균: {avg_width:.6f})")
+
+            elif len(width_history) > FAST_BREAKOUT_LOOKBACK:
+                # 2026-08-16 fast_breakout: 스퀴즈 선행조건 없이도, FAST_BREAKOUT_LOOKBACK캔들
+                # 전 폭 대비 지금 폭이 BREAKOUT_MULTIPLIER배 넘게 급확장했으면 즉시 브레이크아웃
+                # 인정(스퀴즈 상태머신과 별개의 보조 경로 - squeeze_status는 건드리지 않음).
+                past_width = width_history[-1 - FAST_BREAKOUT_LOOKBACK]["width"]
+                if past_width > 0 and current_width > past_width * BREAKOUT_MULTIPLIER:
+                    signal = apply_entry_filters(symbol, coin_key, None, state, candle_close)
+                    if signal:
+                        logger.info(
+                            f"[FAST-BREAKOUT] {coin_key}: {FAST_BREAKOUT_LOOKBACK}캔들전 폭({past_width:.6f}) "
+                            f"대비 급확장(폭 {current_width:.6f}×{BREAKOUT_MULTIPLIER}) → {signal.upper()} 즉시 진입"
+                        )
+                        return signal
+                    else:
+                        logger.info(f"[FAST-BREAKOUT] {coin_key}: 폭 급확장했지만 진입필터 불통과 → 재대기")
 
         elif squeeze_status == "squeeze":
             # 스퀴즈 진입 이후 계속 갱신되는 "최저점" 폭
@@ -313,6 +391,37 @@ def auto_trade(coin_key, symbol, state, username=None):
                 peak_profit_pct = (max_profit_price - entry_price) / entry_price * 100
             else:
                 peak_profit_pct = (entry_price - max_profit_price) / entry_price * 100
+
+            # ── 초반 무동력(stall) 방지: 단계(normal/trend_follow) 무관하게 항상 체크 ──
+            # 2026-08-16: 진입 후 STALL_EXIT_CANDLES 캔들이 지나도록 peak_profit_pct가
+            # STALL_EXIT_MIN_PEAK_PCT%도 못 찍었으면 SL을 entry∓STALL_EXIT_SL_PCT%로 강제로
+            # 좁힘(기존 SL이 더 타이트하면 그대로 유지 - 완화는 안 함). STALL_EXIT_MIN_PEAK_PCT를
+            # PROFIT_LOCK_TRIGGER_PCT와 동일하게 맞춰서, profit_lock 혜택을 못 받는 "정체된"
+            # 거래만 정확히 겨냥(잘 달리는 거래는 이 조건에 걸리기 전에 이미 peak가 올라가 있어
+            # 전혀 영향 없음). backtest_archive/test_stallexit_fastbo_xrp_1y.py로 검증.
+            try:
+                entry_time_dt = datetime.fromisoformat(state[coin_key]["entry_time"])
+                candles_since_entry = int((datetime.now() - entry_time_dt).total_seconds() // (SQUEEZE_TIMEFRAME * 60))
+            except (ValueError, TypeError):
+                candles_since_entry = 0
+
+            if candles_since_entry >= STALL_EXIT_CANDLES and peak_profit_pct < STALL_EXIT_MIN_PEAK_PCT:
+                stall_sl = (entry_price * (1 - STALL_EXIT_SL_PCT / 100) if position_dir == "long"
+                            else entry_price * (1 + STALL_EXIT_SL_PCT / 100))
+                stall_updated = False
+                if position_dir == "long" and stall_sl > state[coin_key]["sl_price"]:
+                    state[coin_key]["sl_price"] = stall_sl
+                    stall_updated = True
+                elif position_dir == "short" and stall_sl < state[coin_key]["sl_price"]:
+                    state[coin_key]["sl_price"] = stall_sl
+                    stall_updated = True
+
+                if stall_updated:
+                    logger.info(f"[STALL-EXIT] {coin_key.upper()}: 진입후 {candles_since_entry}캔들 경과, "
+                                f"최고수익 {peak_profit_pct:.2f}%(<{STALL_EXIT_MIN_PEAK_PCT}%) → SL 조임 (${stall_sl:.6f})")
+                    sl_sync = set_exchange_stop_loss(order_symbol, stall_sl, mode=trade_mode)
+                    if trade_mode == "live" and not sl_sync.get("success"):
+                        logger.error(f"[ERROR] {coin_key.upper()} 거래소 SL 갱신 실패: {sl_sync.get('error')} - 소프트웨어 SL만으로 운용됨")
 
             # ── 0단계(normal): 가격이 HMA200 유리한 쪽에서 벗어나면 즉시 청산 ──
             # 2026-08-07 v3: 사용자 판단 - "진입후에도 가격이 200일선보다 위면 유지".

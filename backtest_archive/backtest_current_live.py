@@ -140,6 +140,23 @@ def width_info_at(candles, t, lookback=WIDTH_LOOKBACK, fetch_window=WIDTH_FETCH_
             "candle_open": candle_open, "candle_close": candle_close}
 
 
+def compute_width_series(candles, lookback=WIDTH_LOOKBACK):
+    """width_info_at()의 current_width를 전 구간에 대해 한번에 벡터화 계산.
+    width_info_at은 매 t마다 최근 fetch_window(100)개만 잘라서 재계산하지만, 실제로
+    각 시점의 current_width는 그 시점 기준 최근 lookback(30)개 종가에만 의존하므로
+    (fetch_window는 avg_width 계산용 여유분일 뿐) 결과값은 전체 시계열에 대해
+    pandas rolling으로 한 번에 계산한 것과 완전히 동일함(단, ddof=0으로 모집단 표준편차
+    사용 - width_info_at의 np.std 기본값과 일치). 30개 전봉 최솟값 비교처럼 과거
+    lookback개 폭이 반복적으로 필요한 경우, t마다 width_info_at을 30번씩 호출하면
+    느리므로(각 호출이 자체적으로 ~70개 rolling stat을 다시 계산) 이 벡터화 버전을
+    미리 한 번 계산해두고 배열 인덱싱만 하기 위한 용도."""
+    close = pd.Series([c["close"] for c in candles])
+    sma = close.rolling(lookback).mean()
+    std = close.rolling(lookback).std(ddof=0)
+    width = (sma + 2 * std) - (sma - 2 * std)
+    return width.to_numpy()
+
+
 def bollinger_at(candles, t, period=BB_PERIOD):
     """라이브 calculate_bollinger_bands() 재현."""
     limit = max(period + 50, 100)
@@ -232,6 +249,24 @@ def hma_gap_at(candles, t, fast=HMA_GAP_FAST, slow=HMA_GAP_SLOW):
     return {"gap": f["hma"] - s["hma"], "fast": f["hma"], "slow": s["hma"]}
 
 
+def hma_slope_at(candles, t, period=HMA_GAP_FAST, lookback=5):
+    """2026-08-14 실험: HMA200(HMA_GAP_FAST)의 기울기 방향 측정.
+    사용자가 BTC 차트에서 관찰한 "HMA200/600은 정배열(상승장 판정)인데 정작 HMA200
+    자체는 이미 꺾여서 하락 중"인 후행지표 문제를 잡기 위함. htf_trend_at()은 HMA200 vs
+    HMA600의 순서(부호)만 보므로 이 문제를 못 잡음 - 별도로 HMA200 자체의 최근 lookback개
+    캔들간 변화량(기울기)을 계산해서 방향을 반환. 데이터 부족하면 None."""
+    cur = hma_at(candles, t, period)
+    prev = hma_at(candles, t - lookback, period)
+    if cur is None or prev is None:
+        return None
+    slope = cur["hma"] - prev["hma"]
+    if slope > 0:
+        return "up"
+    elif slope < 0:
+        return "down"
+    return None
+
+
 ADX_PERIOD = 14
 
 
@@ -276,7 +311,14 @@ def adx_at(candles, t, period=ADX_PERIOD):
 
 def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, profit_lock_ratio=None,
                   volume_mult=None, adx_min=None, hard_tp_pct=None, use_hma_regime_filter=False,
-                  use_price_alignment_filter=False):
+                  use_price_alignment_filter=False, use_hma_direction_only=False, hma_gap_min_pct=0.0,
+                  require_hma_slope=False, hma_slope_lookback=5, use_regime_exit=False,
+                  use_fast_breakout=False, fast_breakout_lookback=2, fast_breakout_mult=None,
+                  use_price_vs_hma200_direction=False,
+                  use_2candle_breakout=False, two_candle_breakout_mult=2.5,
+                  use_min_width_breakout=False, min_width_lookback=30, min_width_mult=2.0,
+                  entry_sl_cap_pct=None,
+                  stall_exit_candles=None, stall_exit_min_peak_pct=0.15, stall_exit_sl_pct=0.8):
     """hma200_buffer_pct: normal 단계 HMA200 Break 하드룰에 완충 버퍼(%) 추가.
     0이면 기존과 동일(HMA200을 살짝만 넘어도 즉시 청산). >0이면 그만큼 더 넘어가야 청산.
 
@@ -294,13 +336,102 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
     유리하게 움직이면 무조건 즉시 익절"하는 고정 상한선. 익절이 원가+0.15%(STAGE1_FEE_BUFFER_PCT)
     에서 계속 잘리는 문제(0.4%~2% 구간 보호장치 부재) 진단 후, profit_lock 대신/추가로
     "그냥 N% 먹으면 무조건 나온다"는 제일 단순한 방식이 더 나은지 비교하기 위함.
-    같은 봉에서 SL도 동시에 닿으면 보수적으로 SL을 우선. None이면 비활성(기존과 동일)."""
+    같은 봉에서 SL도 동시에 닿으면 보수적으로 SL을 우선. None이면 비활성(기존과 동일).
+
+    use_hma_direction_only: 2026-08-14 실험 - 기존엔 브레이크아웃 캔들의 몸통(양봉/음봉)으로
+    방향을 먼저 정하고, 그 방향이 HMA200/600 정배열과 반대면 진입을 취소했음(예: 양봉인데
+    역배열이면 취소). 이 옵션은 캔들 방향을 아예 안 보고, 브레이크아웃이 뜬 순간의 HMA200/600
+    정배열 상태로 방향을 바로 결정(up→롱, down→숏). 캔들-HMA 불일치로 인한 "취소, 재대기"가
+    구조적으로 없어짐(HMA 계산 불가로 인한 취소만 남음). use_hma_regime_filter/
+    use_price_alignment_filter와는 배타적으로 사용(방향 자체를 HMA가 정하므로 별도 필터 불필요).
+
+    hma_gap_min_pct: 2026-08-14 실험 - use_hma_direction_only가 단순히 HMA200 vs HMA600
+    부호(+/-)만 보고 방향을 정해서, 두 선이 거의 붙어있는(추세가 약한/막 뒤집힌) 구간에서도
+    진입을 허용하는 노이즈 문제 보완용. |HMA200-HMA600| / 현재가 × 100 (%)이 이 값 미만이면
+    "추세가 아직 약하다"고 보고 진입 취소. use_hma_direction_only=True일 때만 적용, 0이면
+    비활성(기존과 동일, 부호만 확인).
+
+    require_hma_slope/hma_slope_lookback: 2026-08-14 실험 - 사용자가 BTC 차트에서 관찰한
+    "HMA200/600 정배열(regime='up')인데 HMA200 자체는 이미 꺾여서 내려가는 중" 케이스를
+    잡기 위한 추가 확인. use_hma_regime_filter 분기에서 기존 regime(부호) 확인을 통과해도,
+    HMA200의 최근 hma_slope_lookback개 캔들간 기울기 방향이 신호 방향과 다르면(롱인데
+    slope가 down, 또는 숏인데 slope가 up) 진입 취소. False면 비활성(기존과 동일).
+
+    use_regime_exit: 2026-08-14 실험 - 진입필터(HMA200 vs HMA600 정배열)와 0단계(normal)
+    청산 하드룰(현재가 vs HMA200 단일선)이 서로 다른 기준을 써서, 진입 시점에 가격이 이미
+    HMA200 반대쪽인 눌림목 진입이 진입 직후(15분/1캔들)만에 즉시 손절되는 문제 확인 후,
+    청산 기준도 진입필터와 동일하게 "HMA200 vs HMA600 정배열"로 맞추면 어떻게 되는지
+    검증용. True면 0단계에서 가격 위치 대신 regime이 불리하게 뒤집히는 순간(해당 캔들
+    종가 기준) 청산. False면 기존과 동일(가격 vs HMA200 단일선, 인트라바 저가/고가 기준).
+
+    use_fast_breakout/fast_breakout_lookback/fast_breakout_mult: 2026-08-15 실험 - 기존 로직은
+    반드시 "스퀴즈(폭이 평균 대비 SQUEEZE_ENTER_MULT 이하로 눌린 상태)"가 먼저 감지돼야만
+    그 이후의 확장을 breakout으로 인정함. 그래서 스퀴즈 선행 없이 갑자기 튀는 진짜 큰
+    브레이크아웃은 아예 후보로도 안 잡히고, 그 뒤 가격이 잠깐 눌리며 새로 스퀴즈가 형성된
+    다음의 작은 재확장에서야(이미 저점/고점 근처) 뒤늦게 추격 진입하는 문제가 사용자 관찰로
+    확인됨(SOL 차트: 큰 급락 캔들은 놓치고 그 이후 반등 직전 저점에서 숏 진입). 이 옵션은
+    squeeze_status=="normal"이고 스퀴즈 진입 조건도 아닐 때, 폭이 fast_breakout_lookback개
+    캔들 전 폭 대비 fast_breakout_mult배 이상 급확장되면 스퀴즈 선행 여부와 무관하게 즉시
+    breakout 후보로 인정(신호판정/필터는 기존 breakout 경로와 동일하게 재사용). fast_breakout_mult
+    None이면 BREAKOUT_MULT 재사용. False면 비활성(기존과 동일).
+
+    use_price_vs_hma200_direction: 2026-08-15 실험 - 사용자가 기억하는 "정배열/역배열 필터
+    추가하기 전, 200일선(HMA200)만 보고 캔들이 그 위면 롱/아래면 숏이었던" 원래 방식을 재현.
+    기존엔 breakout 캔들의 몸통(양봉/음봉)으로 방향을 먼저 정했는데, 이 옵션은 캔들 방향을
+    아예 무시하고 breakout 캔들 종가가 HMA200(HMA_ENTRY_PERIOD) 위/아래인지로 바로 방향을
+    정함(use_hma_direction_only와 구조는 같으나, 기준이 "HMA200/600 정배열 부호"가 아니라
+    "가격 vs HMA200 단일선 위치"라는 점이 다름). use_hma_direction_only와 배타적. 이후
+    use_hma_regime_filter 등 기존 필터 체인은 그대로 적용됨(둘 다 True면 "가격 vs HMA200으로
+    방향 결정 + HMA200/600 정배열로 재확인" 조합). False면 비활성(기존과 동일, 캔들 몸통 기준).
+
+    use_2candle_breakout/two_candle_breakout_mult: 2026-08-16 실험 - 사용자가 기존 스퀴즈
+    선행조건부 state machine(normal→squeeze→breakout) 자체를 문제로 지목(스퀴즈 없이
+    바로 터지는 진짜 브레이크아웃을 놓치고, 죽은 횡보장에서는 squeeze_min이 계속
+    수축하며 상대비율 조건이라 사소한 노이즈에도 거짓 진입). 이 옵션은 state machine을
+    완전히 대체(fast_breakout처럼 normal 상태에서만 보조로 붙는 게 아니라 항상 우선 적용):
+    매 "완성된" 캔들 t마다 width_info_at(candles, t)(현재 폭, t시점 종가 기준)와
+    width_info_at(candles, t-1)(직전 폭)만 비교해서, 현재 폭이 직전 폭의
+    two_candle_breakout_mult배 이상이면 스퀴즈 상태와 무관하게 즉시 breakout 인정.
+    squeeze_status는 계산은 하되(다른 옵션과의 호환을 위해 상태변수 자체는 유지) 이 옵션이
+    True인 동안은 breakout 판정에 전혀 관여하지 않음. 방향판정(use_hma_direction_only 등)과
+    청산로직은 완전히 그대로 유지 - 진입 타이밍만 교체하는 1차 실험. False면 비활성(기존과 동일).
+
+    use_min_width_breakout/min_width_lookback/min_width_mult: 2026-08-16 실험 - 2candle_breakout을
+    2.5배로 테스트해보니 1년에 2건만 뜸(원인: current_width가 30기간 롤링 SMA±2std라 한 봉
+    사이에 값이 거의 안 움직여서, 직전 봉 대비 배율 조건 자체가 거의 항상 실패). 사용자가
+    "전봉 1개가 아니라 최근 30개 전봉 중 가장 작았던 폭"을 기준으로 잡자고 제안 - 이러면
+    구 state machine의 squeeze_min(스퀴즈 진입 이후로만 갱신되는 래칫)과 달리, 매 시점 롤링
+    윈도우 최솟값이라 죽은 횡보장이 오래 지속돼도 계속 갱신되고, 스퀴즈 선행조건도 없음.
+    매 완성된 캔들 t마다: 직전 min_width_lookback(30)개 캔들(t-lookback..t-1)의
+    current_width 중 최솟값을 구해서, 지금 캔들의 current_width가 그 최솟값의
+    min_width_mult(2.0)배 이상이면 breakout 인정. compute_width_series()로 전체 구간을
+    미리 벡터화 계산해두고(width_info_at을 30번씩 반복호출하면 느려서) 인덱싱만 함.
+    use_2candle_breakout과 배타적(둘 다 True면 이 옵션이 우선). False면 비활성(기존과 동일).
+
+    entry_sl_cap_pct/stall_exit_*: 2026-08-16 실험 - "가격정렬 필터"(use_price_alignment_filter)
+    적용 후 Trend Follow Stop 172건을 까본 결과: peak가 profit_lock 트리거(0.5%)를 못 찍고
+    반전된 60건이 진입시점의 "원래 넓은 SL"(밴드폭 또는 최대 SL_PERCENT=3.5% 중 작은 쪽)을
+    그대로 맞고 나가며 그룹 총손익 -$3,480(25/60 손실)을 만든 반면, 0.5%를 찍어서 profit_lock이
+    걸린 112건은 전승(0손실, +$6,914)이었음. 즉 손실의 핵심은 "SL이 안 올라가서"가 아니라
+    "트리거 전 SL이 너무 넓어서". 사용자가 제안한 3종 세트:
+      1) profit_lock_trigger_pct를 낮춰서(테스트 스크립트에서 0.5→더 낮은 값으로 전달) 더
+         일찍 보호 시작 - 기존 파라미터 재사용, 코드 변경 없음.
+      2) stall_exit_candles/stall_exit_min_peak_pct/stall_exit_sl_pct: "초반 무동력" 조기청산.
+         진입 후 stall_exit_candles개 캔들이 지나도록 peak_profit_pct가
+         stall_exit_min_peak_pct%도 못 찍었으면, SL을 entry ∓ stall_exit_sl_pct%로 강제로
+         좁힘(기존 SL/트레일링 SL과 비교해 "더 타이트한 쪽으로만" 적용 - 완화는 안 함). 단계
+         (normal/trend_follow) 무관하게 항상 체크. None이면 비활성(기존과 동일).
+      3) entry_sl_cap_pct: 진입 시점 SL 상한을 SL_PERCENT(3.5%) 대신 이 값(%)으로 교체.
+         밴드폭이 넓은 변동성 구간에서 진입 SL 자체가 과도하게 넓게 열리는 것을 방지.
+         None이면 기존(SL_PERCENT=3.5%) 그대로."""
     seed = SEED
     position = None
     trades = []
     squeeze_status = "normal"
     squeeze_width = None
     last_close_ts = None
+
+    width_series = compute_width_series(candles) if use_min_width_breakout else None
 
     # HMA_GAP_SLOW(600)이 가장 큰 warmup 요구치 - hma_at 내부에서 period+100(최소 200)개
     # 윈도우 필요 + 그 중 half/sqrt WMA들이 또 앞부분을 깎아먹으므로 넉넉히 잡음
@@ -335,19 +466,55 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
             exit_price = None
             reason = None
 
+            # 2026-08-16: "초반 무동력" 조기청산 - 진입 후 stall_exit_candles개 캔들이
+            # 지나도록 peak_profit_pct가 stall_exit_min_peak_pct%도 못 찍었으면, SL을
+            # entry ∓ stall_exit_sl_pct%로 강제로 좁힘(기존 SL보다 타이트할 때만 적용 -
+            # 완화는 안 함). 단계(normal/trend_follow) 무관하게 항상 체크. profit_lock
+            # 트리거 전까지 SL이 너무 넓게 열려있어서 생기던 손실(그룹 A, -$3,480/60건)을
+            # 줄이기 위함.
+            if stall_exit_candles is not None:
+                candles_since_entry = t - position["entry_t"]
+                if candles_since_entry >= stall_exit_candles and peak_profit_pct < stall_exit_min_peak_pct:
+                    stall_sl = (entry * (1 - stall_exit_sl_pct / 100) if side == "long"
+                                else entry * (1 + stall_exit_sl_pct / 100))
+                    if side == "long" and stall_sl > position["sl_price"]:
+                        position["sl_price"] = stall_sl
+                    elif side == "short" and stall_sl < position["sl_price"]:
+                        position["sl_price"] = stall_sl
+
             # 0단계(normal): 1h HMA200 반대쪽 이탈 시 즉시 청산 (+ 완충 버퍼)
             if position["profit_mode"] == "normal":
-                h200 = hma_at(candles, t, HMA_ENTRY_PERIOD)
-                hma200_now = h200["hma"] if h200 else None
-                if hma200_now is not None:
-                    if side == "long":
-                        break_level = hma200_now * (1 - hma200_buffer_pct / 100)
-                        if low < break_level:
-                            exit_price, reason = break_level, "HMA200 Break"
-                    else:
-                        break_level = hma200_now * (1 + hma200_buffer_pct / 100)
-                        if high > break_level:
-                            exit_price, reason = break_level, "HMA200 Break"
+                if use_regime_exit:
+                    # 2026-08-14 실험: 가격 vs HMA200 대신, 진입필터와 동일하게 HMA200 vs
+                    # HMA600 정배열이 불리하게 뒤집리는 순간(캔들 종가 기준) 청산. 인트라바
+                    # 저가/고가가 아니라 해당 캔들 종가로 판정(regime 자체가 종가 기반 계산).
+                    regime_now = htf_trend_at(candles, t)
+                    broke_regime = (
+                        (side == "long" and regime_now == "down") or
+                        (side == "short" and regime_now == "up")
+                    )
+                    if broke_regime:
+                        exit_price, reason = close, "HMA200 Break"
+                else:
+                    h200 = hma_at(candles, t, HMA_ENTRY_PERIOD)
+                    hma200_now = h200["hma"] if h200 else None
+                    if hma200_now is not None:
+                        # 2026-08-16 버그수정: 청산 체결가를 "HMA200 라인 값"이 아니라 실제
+                        # 캔들 종가(close)로 사용. 라이브는 현재가(폴링) 대비 이탈을 감지해서
+                        # 그 현재가로 즉시 청산(close_trade(coin_key, current_price, ...))하는데,
+                        # 기존 백테스트는 체결가를 break_level(라인 값)로 잡아서 - 진입시점부터
+                        # 이미 라인 반대쪽(눌림목)이었던 포지션은 실제 가격 움직임과 무관하게
+                        # "라인값 vs 진입가" 차이만큼 항상 가짜 이익이 찍히는 구조였음(검증:
+                        # HMA200 Break 261건 중 219건이 눌림목 진입이었고 그 219건의 승률이
+                        # 97.7%였는데, 실제 라이브에서는 같은 유형 거래가 9/9 전부 손실).
+                        if side == "long":
+                            break_level = hma200_now * (1 - hma200_buffer_pct / 100)
+                            if low < break_level:
+                                exit_price, reason = close, "HMA200 Break"
+                        else:
+                            break_level = hma200_now * (1 + hma200_buffer_pct / 100)
+                            if high > break_level:
+                                exit_price, reason = close, "HMA200 Break"
 
             # 단계 전환: normal → trend_follow (1h HMA200/600 정배열)
             if exit_price is None and position["profit_mode"] == "normal":
@@ -477,21 +644,83 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
         candle_open = wi["candle_open"]
         candle_close = wi["candle_close"]
 
-        if squeeze_status == "normal":
+        breakout_now = False
+
+        if use_min_width_breakout:
+            # 2026-08-16: 직전 봉 1개가 아니라, 최근 min_width_lookback(30)개 완성봉의
+            # current_width 중 최솟값 대비 배율로 판정. 죽은 횡보장이 길어져도 계속
+            # 갱신되는 롤링 최솟값이라 구 squeeze_min 래칫보다 노이즈에 덜 취약함.
+            if t >= min_width_lookback:
+                window_w = width_series[t - min_width_lookback:t]
+                window_w = window_w[~np.isnan(window_w)]
+                if len(window_w) > 0:
+                    min_w = float(window_w.min())
+                    if min_w > 0 and current_width >= min_w * min_width_mult:
+                        breakout_now = True
+        elif use_2candle_breakout:
+            # 2026-08-16: 스퀴즈 선행조건 없이, 직전 완성봉 폭 대비 현재봉 폭의 절대 배율만
+            # 본다. state machine(정상/스퀴즈)은 아예 관여하지 않음.
+            wi_prev = width_info_at(candles, t - 1)
+            if wi_prev is not None and wi_prev["current_width"] > 0:
+                if current_width >= wi_prev["current_width"] * two_candle_breakout_mult:
+                    breakout_now = True
+        elif squeeze_status == "normal":
             if current_width < avg_width * SQUEEZE_ENTER_MULT:
                 squeeze_status = "squeeze"
                 squeeze_width = current_width
+            elif use_fast_breakout:
+                wi_back = width_info_at(candles, t - fast_breakout_lookback)
+                if wi_back is not None and wi_back["current_width"] > 0:
+                    fb_mult = fast_breakout_mult if fast_breakout_mult is not None else BREAKOUT_MULT
+                    if current_width > wi_back["current_width"] * fb_mult:
+                        breakout_now = True
         elif squeeze_status == "squeeze":
             if current_width < squeeze_width:
                 squeeze_width = current_width
 
             if current_width > squeeze_width * BREAKOUT_MULT:
-                signal = None
-                if candle_close > candle_open:
-                    signal = "long"
-                elif candle_close < candle_open:
-                    signal = "short"
                 squeeze_status = "normal"
+                breakout_now = True
+
+        if breakout_now:
+                if use_hma_direction_only:
+                    # 2026-08-14: 캔들 몸통(양봉/음봉) 무시, 브레이크아웃 시점 HMA200/600
+                    # 정배열/역배열로 바로 방향 결정. 불일치로 인한 취소 자체가 없어짐.
+                    regime = htf_trend_at(candles, t)
+                    if regime == "up":
+                        signal = "long"
+                    elif regime == "down":
+                        signal = "short"
+                    else:
+                        signal = None
+
+                    if signal and hma_gap_min_pct > 0:
+                        gap_info = hma_gap_at(candles, t)
+                        if gap_info is None:
+                            signal = None
+                        else:
+                            gap_pct = abs(gap_info["gap"]) / candle_close * 100
+                            if gap_pct < hma_gap_min_pct:
+                                signal = None
+                elif use_price_vs_hma200_direction:
+                    # 2026-08-15: 캔들 몸통(양봉/음봉) 무시, breakout 캔들 종가가 HMA200
+                    # 위/아래인지로 바로 방향 결정 (정배열/역배열 필터 도입 전 원래 방식 재현).
+                    h200_dir = hma_at(candles, t, HMA_ENTRY_PERIOD)
+                    hma200_dir_now = h200_dir["hma"] if h200_dir else None
+                    if hma200_dir_now is None:
+                        signal = None
+                    elif candle_close > hma200_dir_now:
+                        signal = "long"
+                    elif candle_close < hma200_dir_now:
+                        signal = "short"
+                    else:
+                        signal = None
+                else:
+                    signal = None
+                    if candle_close > candle_open:
+                        signal = "long"
+                    elif candle_close < candle_open:
+                        signal = "short"
 
                 if signal and volume_mult is not None:
                     vc = volume_confirmed_at(candles, t, mult=volume_mult)
@@ -503,7 +732,28 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                     if adx_val is None or adx_val < adx_min:
                         signal = None
 
-                if signal:
+                if signal and use_hma_direction_only:
+                    if use_price_alignment_filter:
+                        # 2026-08-16: 방향은 그대로 regime(200/600 정배열 부호)로 정하되,
+                        # "가격이 이미 그 방향으로 완전히 정배열된 상태"(눌림목 아님)일 때만
+                        # 진입 허용. 롱: 가격>200>600, 숏: 가격<200<600. 이러면 진입 시점부터
+                        # 가격이 HMA200 반대쪽에 있는(=0단계 HMA200 하드이탈룰에 바로 걸리는)
+                        # "눌림목 진입" 자체가 원천 차단됨 - 진입 직후 15분만에 즉시청산되던
+                        # 문제의 근본 원인을 진입단에서 제거하는 실험.
+                        h200 = hma_at(candles, t, HMA_GAP_FAST)
+                        h600 = hma_at(candles, t, HMA_GAP_SLOW)
+                        h200v = h200["hma"] if h200 else None
+                        h600v = h600["hma"] if h600 else None
+                        if h200v is None or h600v is None:
+                            signal = None
+                        else:
+                            trend_ok = (
+                                (signal == "long" and candle_close > h200v > h600v) or
+                                (signal == "short" and candle_close < h200v < h600v)
+                            )
+                            if not trend_ok:
+                                signal = None
+                elif signal:
                     if use_price_alignment_filter:
                         # 2026-08-12 실험: 진입 시점에 "가격 / 200 / 600" 완전 정배열(역배열)일
                         # 때만 진입 허용. 눌림목(가격이 200 아래/위로 눌린 상태) 진입 자체를 차단해서
@@ -525,10 +775,27 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                         # 2026-08-12 실험: "가격 vs HMA200" 대신 "HMA200 vs HMA600 정배열/역배열"로
                         # 추세필터를 바꿈. 가격이 일시적으로 200선 아래(위)로 눌려도 큰 추세(200/600
                         # 골든/데드크로스)가 살아있으면 진입 허용 - 눌림목 진입 기회를 넓히려는 목적.
+                        # 2026-08-14: 여긴 실전(trading_service.py apply_entry_filters)과 동일한
+                        # "캔들방향 우선 + HMA정배열 확인" 로직. hma_gap_min_pct 갭크기 필터를 여기에도
+                        # 연결(기존엔 use_hma_direction_only 분기에만 있었음) - 실전 로직 그대로 유지한
+                        # 채 갭임계값 효과만 검증하기 위함. 0이면 기존과 동일(부호만 확인).
                         regime = htf_trend_at(candles, t)
                         trend_ok = (signal == "long" and regime == "up") or (signal == "short" and regime == "down")
                         if not trend_ok:
                             signal = None
+                        elif hma_gap_min_pct > 0:
+                            gap_info = hma_gap_at(candles, t)
+                            if gap_info is None:
+                                signal = None
+                            else:
+                                gap_pct = abs(gap_info["gap"]) / candle_close * 100
+                                if gap_pct < hma_gap_min_pct:
+                                    signal = None
+                        if signal and require_hma_slope:
+                            slope_dir = hma_slope_at(candles, t, HMA_GAP_FAST, hma_slope_lookback)
+                            slope_ok = (signal == "long" and slope_dir == "up") or (signal == "short" and slope_dir == "down")
+                            if not slope_ok:
+                                signal = None
                     else:
                         h200 = hma_at(candles, t, HMA_ENTRY_PERIOD)
                         hma200_now = h200["hma"] if h200 else None
@@ -546,7 +813,8 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                     avg_w = wi_entry["avg_width"] if wi_entry else None
 
                     leverage_safety_pct = (1 / LEVERAGE) * 0.8
-                    max_sl_distance_pct = min(SL_PERCENT, leverage_safety_pct)
+                    sl_cap = (entry_sl_cap_pct / 100) if entry_sl_cap_pct is not None else SL_PERCENT
+                    max_sl_distance_pct = min(sl_cap, leverage_safety_pct)
                     max_sl_distance = entry_price * max_sl_distance_pct
 
                     if avg_w:
@@ -570,7 +838,7 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
 
                     notional = seed * ENTRY_PERCENT * LEVERAGE
                     position = {
-                        "side": signal, "entry": entry_price, "entry_ts": ts,
+                        "side": signal, "entry": entry_price, "entry_ts": ts, "entry_t": t,
                         "max_profit_price": entry_price, "prev_max": entry_price,
                         "sl_price": sl_price, "tp_price": tp_price,
                         "profit_mode": "normal", "hma_gap_peak": 0,
