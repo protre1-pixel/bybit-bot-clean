@@ -423,31 +423,37 @@ def auto_trade(coin_key, symbol, state, username=None):
                     if trade_mode == "live" and not sl_sync.get("success"):
                         logger.error(f"[ERROR] {coin_key.upper()} 거래소 SL 갱신 실패: {sl_sync.get('error')} - 소프트웨어 SL만으로 운용됨")
 
-            # ── 0단계(normal): 가격이 HMA200 유리한 쪽에서 벗어나면 즉시 청산 ──
+            # ── 0단계(normal): HMA200/600 정배열 자체가 뒤집히면 즉시 청산 ──
             # 2026-08-07 v3: 사용자 판단 - "진입후에도 가격이 200일선보다 위면 유지".
-            # SL/TP 판정과 무관한 별개의 하드 룰(휩소 방지) - 진입필터(apply_entry_filters)와는
-            # 별도 캐시(htf_trend_cache, 단일 HMA200 값)를 씀.
-            # 2026-08-12: 1시간봉→15분봉으로 재변경 (사용자 판단, SQUEEZE_TIMEFRAME 통일).
-            if profit_mode == "normal":
-                from app.services.price_service import calculate_hma
-                now_ts_h = datetime.now().timestamp()
-                h_cache = state[coin_key].get("htf_trend_cache") or {}
-                if "hma200" in h_cache and h_cache.get("ts") and (now_ts_h - h_cache["ts"]) < HTF_TREND_CACHE_SEC:
-                    hma200_now = h_cache.get("hma200")
-                else:
-                    hma200_now = calculate_hma(symbol, period=200, timeframe=SQUEEZE_TIMEFRAME)
-                    state[coin_key]["htf_trend_cache"] = {"hma200": hma200_now, "ts": now_ts_h}
+            # 2026-08-17: use_regime_exit 백테스트 검증 결과로 교체 - 기존엔 "가격 vs HMA200"
+            # 단순 교차로 판정해서 정상적인 눌림목에도 자주 휩소 손절됐음. 대신 진입 단계 전환
+            # 판단에 이미 쓰는 "HMA200 vs HMA600 정배열(align_trend)" 자체가 포지션에 불리한
+            # 쪽으로 뒤집히는 경우에만 청산하도록 변경 - 추세가 살아있는 동안은 가격이 200일선에
+            # 잠깐 닿아도 버팀. backtest_archive/test_regime_exit_4coin_1y.py로 BTC/ETH/XRP/SOL
+            # 1년 검증(승률/PF 개선, MDD는 소폭 상승 또는 유지) - 완전정배열 진입필터
+            # (use_price_alignment_filter, apply_entry_filters)는 그대로 유지.
+            # 단계전환 판단(구 "단계 전환 판단" 블록)과 동일한 align_trend 값을 공유해서
+            # HMA 계산을 중복하지 않음(캐시: hma_align_cache). 구 htf_trend_cache(단일 HMA200)는
+            # 더 이상 쓰지 않음.
+            from app.services.price_service import get_htf_trend
+            now_ts_a = datetime.now().timestamp()
+            a_cache = state[coin_key].get("hma_align_cache") or {}
+            if a_cache.get("ts") and (now_ts_a - a_cache["ts"]) < HTF_TREND_CACHE_SEC:
+                align_trend = a_cache.get("trend")
+            else:
+                align_trend = get_htf_trend(symbol, fast_period=200, slow_period=600, timeframe=SQUEEZE_TIMEFRAME)
+                state[coin_key]["hma_align_cache"] = {"trend": align_trend, "ts": now_ts_a}
 
-                if hma200_now is not None:
-                    broke_hma200 = (
-                        (position_dir == "long" and current_price < hma200_now) or
-                        (position_dir == "short" and current_price > hma200_now)
-                    )
-                    if broke_hma200:
-                        logger.info(f"[HMA200-BREAK] {coin_key.upper()}: 가격이 HMA200 반대쪽으로 이탈 "
-                                    f"(price={current_price:.6f}, hma200={hma200_now:.6f}) → 즉시 청산")
-                        close_trade(coin_key, current_price, "HMA200 Break", state, username)
-                        return
+            if profit_mode == "normal" and align_trend is not None:
+                regime_flipped = (
+                    (position_dir == "long" and align_trend == "down") or
+                    (position_dir == "short" and align_trend == "up")
+                )
+                if regime_flipped:
+                    logger.info(f"[HMA200-BREAK] {coin_key.upper()}: HMA200/600 정배열이 반대로 뒤집힘 "
+                                f"(align_trend={align_trend}, position={position_dir}) → 즉시 청산")
+                    close_trade(coin_key, current_price, "HMA200 Break", state, username)
+                    return
 
             # ── 단계 전환 판단 (한 번 올라간 단계는 절대 내려가지 않음) ──
             # 2026-08-07 v3: 트리거를 "최고수익 1%" 대신 "HMA200/600 정배열"로 교체
@@ -458,15 +464,6 @@ def auto_trade(coin_key, symbol, state, username=None):
             target_mode = profit_mode
 
             if current_rank < 1:
-                from app.services.price_service import get_htf_trend
-                now_ts_a = datetime.now().timestamp()
-                a_cache = state[coin_key].get("hma_align_cache") or {}
-                if a_cache.get("ts") and (now_ts_a - a_cache["ts"]) < HTF_TREND_CACHE_SEC:
-                    align_trend = a_cache.get("trend")
-                else:
-                    align_trend = get_htf_trend(symbol, fast_period=200, slow_period=600, timeframe=SQUEEZE_TIMEFRAME)
-                    state[coin_key]["hma_align_cache"] = {"trend": align_trend, "ts": now_ts_a}
-
                 stage_favorable = (
                     (position_dir == "long" and align_trend == "up") or
                     (position_dir == "short" and align_trend == "down")

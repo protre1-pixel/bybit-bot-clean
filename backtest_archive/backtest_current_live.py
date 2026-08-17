@@ -140,6 +140,86 @@ def width_info_at(candles, t, lookback=WIDTH_LOOKBACK, fetch_window=WIDTH_FETCH_
             "candle_open": candle_open, "candle_close": candle_close}
 
 
+def compute_candle_size_series(candles):
+    """각 캔들의 high-low 범위(캔들 크기)를 전 구간에 대해 미리 배열로 계산.
+    use_candle_size_breakout에서 min_width_breakout과 동일한 방식(롤링 슬라이싱)으로
+    평균과 비교하기 위한 벡터화 버전."""
+    return np.array([c["high"] - c["low"] for c in candles])
+
+
+def compute_supertrend_series(candles, period=10, multiplier=3.0):
+    """2026-08-17 실험 - 표준 SuperTrend(ATR 기반) 지표를 전 구간에 대해 한 번에 계산.
+    SuperTrend는 직전 값에 의존하는 재귀(래칫) 지표라 hma_at처럼 매 t마다 독립적으로
+    재계산할 수 없음(밴드가 "좁아지는 방향으로만" 갱신되는 누적 상태) - 그래서
+    compute_width_series처럼 전체 시계열을 앞에서부터 한 번만 순회하며 계산.
+    TradingView 기본 SuperTrend와 동일한 알고리즘(ATR은 Wilder's RMA 방식):
+      1) TR = max(high-low, |high-prev_close|, |low-prev_close|)
+      2) ATR = RMA(TR, period) (첫 period개는 단순평균으로 워밍업)
+      3) basic_upper = hl2 + multiplier*ATR, basic_lower = hl2 - multiplier*ATR
+      4) final_upper/lower는 직전 final 값과 비교해 "추세와 반대방향으로는 갱신 안 함"
+         (상승추세 중엔 lower band가 내려가지 않고, 하락추세 중엔 upper band가 안 올라감)
+      5) 종가가 반대쪽 final band를 뚫으면 추세 전환(방향 flip) + supertrend 라인이
+         반대쪽 band로 즉시 이동
+    반환: (st_line, st_dir) 두 numpy 배열. st_dir는 +1(상승/롱 방향, 라인이 가격 아래)
+    / -1(하락/숏 방향, 라인이 가격 위) / nan(워밍업 구간)."""
+    n = len(candles)
+    high = np.array([c["high"] for c in candles])
+    low = np.array([c["low"] for c in candles])
+    close = np.array([c["close"] for c in candles])
+
+    tr = np.full(n, np.nan)
+    tr[0] = high[0] - low[0]
+    for i in range(1, n):
+        tr[i] = max(high[i] - low[i], abs(high[i] - close[i - 1]), abs(low[i] - close[i - 1]))
+
+    atr = np.full(n, np.nan)
+    if n > period:
+        atr[period - 1] = tr[1:period + 1].mean() if period < n else np.nan
+        for i in range(period, n):
+            atr[i] = (atr[i - 1] * (period - 1) + tr[i]) / period
+
+    hl2 = (high + low) / 2
+    basic_upper = hl2 + multiplier * atr
+    basic_lower = hl2 - multiplier * atr
+
+    final_upper = np.full(n, np.nan)
+    final_lower = np.full(n, np.nan)
+    st_line = np.full(n, np.nan)
+    st_dir = np.full(n, np.nan)
+
+    start = period - 1
+    if start < 0 or start >= n or np.isnan(atr[start]):
+        return st_line, st_dir
+
+    final_upper[start] = basic_upper[start]
+    final_lower[start] = basic_lower[start]
+    st_dir[start] = -1.0 if close[start] <= final_upper[start] else 1.0
+    st_line[start] = final_upper[start] if st_dir[start] == -1 else final_lower[start]
+
+    for i in range(start + 1, n):
+        if np.isnan(atr[i]):
+            continue
+        if (basic_upper[i] < final_upper[i - 1]) or (close[i - 1] > final_upper[i - 1]):
+            final_upper[i] = basic_upper[i]
+        else:
+            final_upper[i] = final_upper[i - 1]
+
+        if (basic_lower[i] > final_lower[i - 1]) or (close[i - 1] < final_lower[i - 1]):
+            final_lower[i] = basic_lower[i]
+        else:
+            final_lower[i] = final_lower[i - 1]
+
+        prev_dir = st_dir[i - 1]
+        if prev_dir == -1.0:
+            st_dir[i] = -1.0 if close[i] <= final_upper[i] else 1.0
+        else:
+            st_dir[i] = 1.0 if close[i] >= final_lower[i] else -1.0
+
+        st_line[i] = final_upper[i] if st_dir[i] == -1 else final_lower[i]
+
+    return st_line, st_dir
+
+
 def compute_width_series(candles, lookback=WIDTH_LOOKBACK):
     """width_info_at()의 current_width를 전 구간에 대해 한번에 벡터화 계산.
     width_info_at은 매 t마다 최근 fetch_window(100)개만 잘라서 재계산하지만, 실제로
@@ -317,8 +397,14 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                   use_price_vs_hma200_direction=False,
                   use_2candle_breakout=False, two_candle_breakout_mult=2.5,
                   use_min_width_breakout=False, min_width_lookback=30, min_width_mult=2.0,
+                  use_candle_size_breakout=False, candle_size_lookback=30, candle_size_mult=None,
+                  candle_size_require_squeeze=False, candle_size_squeeze_mult=0.7,
+                  use_supertrend_breakout=False, use_supertrend_trail=False,
+                  use_supertrend_direction_only=False,
+                  supertrend_period=10, supertrend_multiplier=3.0,
                   entry_sl_cap_pct=None,
-                  stall_exit_candles=None, stall_exit_min_peak_pct=0.15, stall_exit_sl_pct=0.8):
+                  stall_exit_candles=None, stall_exit_min_peak_pct=0.15, stall_exit_sl_pct=0.8,
+                  pure_regime_trail=False, regime_trail_after_profit_pct=None):
     """hma200_buffer_pct: normal 단계 HMA200 Break 하드룰에 완충 버퍼(%) 추가.
     0이면 기존과 동일(HMA200을 살짝만 넘어도 즉시 청산). >0이면 그만큼 더 넘어가야 청산.
 
@@ -408,6 +494,60 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
     미리 벡터화 계산해두고(width_info_at을 30번씩 반복호출하면 느려서) 인덱싱만 함.
     use_2candle_breakout과 배타적(둘 다 True면 이 옵션이 우선). False면 비활성(기존과 동일).
 
+    use_candle_size_breakout/candle_size_lookback/candle_size_mult: 2026-08-17 실험 - 사용자
+    제안: 트리거를 "밴드폭(종가 기반 SMA±2std)" 대신 "캔들 자체 크기(고가-저가)"로 잡아보자.
+    기존 min_width_breakout(최근 lookback개 폭의 최솟값 대비 배율)과 방식은 동일하되, 기준을
+    밴드폭이 아니라 캔들 개별 크기(high-low)의 "평균"으로 바꿈: 매 완성된 캔들 t-1마다,
+    그 이전 candle_size_lookback(30)개 완성봉의 (high-low) 평균(avg_size)을 구해서, 지금
+    캔들의 크기(current_size)가 avg_size의 candle_size_mult배 이상이면 breakout 인정.
+    candle_size_mult가 None이면 BREAKOUT_MULT 재사용(기존 옵션들의 컨벤션과 동일). 스퀴즈
+    상태(squeeze_status)와 무관하게 항상 우선 적용되며, 밴드폭 기반 옵션들(min_width_breakout/
+    2candle_breakout)과는 배타적(이 옵션이 True면 최우선). 방향판정/청산로직은 완전히 그대로
+    유지 - 진입 트리거 소스만 밴드폭→캔들크기로 교체하는 실험. False면 비활성(기존과 동일).
+
+    candle_size_require_squeeze/candle_size_squeeze_mult: 2026-08-17 실험(2차) - 단순
+    "평균 대비 배율" 방식(candle_size_require_squeeze=False)으로 XRP 1년 테스트해보니
+    실제로 캔들 16개 중 1개꼴(mult=2.0 기준 6%)로 조건이 걸려서 거래수가 231건→680건으로
+    3배 폭증, PF가 1.35→0.95로 하락(휩쏘 노이즈가 대거 섞여 들어옴). 원인은 밴드폭 트리거가
+    "스퀴즈(수축)로 먼저 조용해진 뒤에야 확장을 인정"하는 2단계 조건인 반면, 단순 배율
+    방식은 스퀴즈 선행조건 없이 "지금 캔들이 크다"만 보는 1단계 조건이라 변동성 클러스터
+    구간에서 계속 재트리거되기 때문. 이 옵션은 밴드폭의 squeeze_status state machine을
+    캔들크기 버전으로 그대로 복제(전용 상태변수 cs_squeeze_status/cs_squeeze_size 사용,
+    밴드폭 쪽 squeeze_status와는 완전히 별개): normal 상태에서 current_size가
+    avg_size(candle_size_lookback개 평균)의 candle_size_squeeze_mult(0.7)배 미만으로
+    수축하면 squeeze 상태로 전환 후 squeeze_size를 그 크기로 기록, squeeze 상태에서는
+    squeeze_size를 계속 최솟값으로 갱신하다가 current_size가 squeeze_size ×
+    candle_size_mult(None이면 BREAKOUT_MULT) 배 이상으로 확장되면 breakout 인정 후 normal로
+    복귀. candle_size_require_squeeze=False(기본값)면 기존 단순 배율 방식 그대로 유지.
+
+    use_supertrend_breakout/use_supertrend_trail/supertrend_period/supertrend_multiplier:
+    2026-08-17 실험 - 사용자 제안. 밴드폭/캔들크기 두 트리거 실험 모두 지금 라이브(PF 1.35)를
+    못 넘어서, 아예 다른 지표(SuperTrend, ATR 기반 표준 추세추종 지표)를 진입/청산 양쪽에
+    다 붙여보는 실험. compute_supertrend_series()로 전 구간 (period, multiplier)의
+    SuperTrend 방향(st_dir, +1=상승/-1=하락)을 미리 계산해두고:
+      - use_supertrend_breakout=True: 기존 밴드폭 스퀴즈/캔들크기 트리거를 전부 무시하고,
+        완성봉 t-1의 SuperTrend 방향이 직전 봉과 달라지는 순간(플립)을 진입 신호로 직접
+        사용 - 방향도 그 플립 방향(하락→상승 플립=롱, 상승→하락 플립=숏)으로 바로 결정되므로
+        use_hma_direction_only 등 기존 방향판정 로직은 거치지 않음(배타적, 최우선).
+      - use_supertrend_trail=True: pure_regime_trail과 동일한 구조로 SL/TP/profit_lock/
+        stall_exit/단계전환 등 기존 청산로직을 전부 끄고, 포지션 방향에 불리하게 SuperTrend가
+        뒤집히는 순간(해당 캔들 종가 기준)에만 청산 - SuperTrend 라인 자체가 트레일링
+        스탑 역할을 하는 게 지표의 표준적인 쓰임이라 이 방식이 가장 자연스러움. 내부적으로
+        use_pure_regime_now와 병합된 use_pure_trail_now로 하위 모든 청산 블록을 동일하게
+        우회(pure_regime_trail과 배타적 - 둘 다 True인 조합은 가정하지 않음).
+      - 둘 다 False면 기존과 완전히 동일(비활성). 두 옵션은 독립적으로 켜고 끌 수 있음(진입만
+        SuperTrend로 바꾸고 청산은 기존 방식 유지, 또는 그 반대도 가능).
+
+    use_supertrend_direction_only: 2026-08-17 실험(2차) - entry/exit 둘 다 SuperTrend로
+    바꾼 3가지 조합이 전부 베이스라인(PF 1.35)을 못 넘고, 특히 exit=SuperTrend trail이
+    HMA갭 기반 트레일링보다 훨씬 둔감(밴드 괴리율 평균 1%)해서 이익 반납이 컸던 것으로 진단.
+    사용자 제안 - "트리거/청산은 그대로 두고 롱/숏 방향판정만" HMA200/600 정배열 부호
+    (use_hma_direction_only) 대신 SuperTrend 방향으로 바꿔서, 방향판정 로직 하나만 격리해서
+    비교. 기존 밴드폭 스퀴즈/fast_breakout 트리거가 breakout_now를 True로 만든 뒤, 방향만
+    완성봉 t-1의 supertrend_dir 부호(+1=long/-1=short, nan이면 진입 취소)로 결정 - 이후
+    use_price_alignment_filter 등 방향 무관 필터는 공용 elif signal: 분기를 그대로 타므로
+    추가 수정 없이 동일하게 적용됨. use_hma_direction_only와 배타적(동시 True 조합 미지원).
+
     entry_sl_cap_pct/stall_exit_*: 2026-08-16 실험 - "가격정렬 필터"(use_price_alignment_filter)
     적용 후 Trend Follow Stop 172건을 까본 결과: peak가 profit_lock 트리거(0.5%)를 못 찍고
     반전된 60건이 진입시점의 "원래 넓은 SL"(밴드폭 또는 최대 SL_PERCENT=3.5% 중 작은 쪽)을
@@ -423,15 +563,35 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
          (normal/trend_follow) 무관하게 항상 체크. None이면 비활성(기존과 동일).
       3) entry_sl_cap_pct: 진입 시점 SL 상한을 SL_PERCENT(3.5%) 대신 이 값(%)으로 교체.
          밴드폭이 넓은 변동성 구간에서 진입 SL 자체가 과도하게 넓게 열리는 것을 방지.
-         None이면 기존(SL_PERCENT=3.5%) 그대로."""
+         None이면 기존(SL_PERCENT=3.5%) 그대로.
+
+    pure_regime_trail: 2026-08-16 실험 - 사용자 요청. 진입은 기존 그대로(어떤 조합이든),
+    진입 이후엔 SL/TP/profit_lock/stall_exit/단계전환(normal→trend_follow)/HMA갭 트레일링을
+    전부 끄고, "HMA200 vs HMA600 정배열"이 포지션 방향에 불리하게 뒤집히는 순간(해당 캔들
+    종가 기준)에만 청산. 즉 초기 보호 SL조차 없음 - 순수하게 "정배열/역배열이 유지되는 동안
+    무조건 홀드"만 검증하기 위한 옵션. False면 기존과 동일(비활성).
+
+    regime_trail_after_profit_pct: 2026-08-16 실험 - pure_regime_trail을 처음부터(진입
+    직후부터) 적용했더니 보호장치 없는 구간에서 너무 오래 물려서(평균보유 39.1h, MDD 100%,
+    최종시드 사실상 전멸) 대참사였음. 그래서 "수익이 나기 전까지는 기존 방식(단계0 HMA200
+    하드이탈, 밴드폭 기반 SL/TP, stall_exit 등) 그대로 유지"하고, peak_profit_pct가 이 값(%)
+    이상 찍힌 "이후부터만" 기존 트레일링(profit_lock/HMA갭수축/본전방어 staged_sl)을 전부
+    끄고 순수 regime 뒤집힘 청산으로 전환. None이면 비활성(기존과 동일). pure_regime_trail이
+    True면 이 옵션은 무시(처음부터 pure 모드)."""
     seed = SEED
     position = None
     trades = []
     squeeze_status = "normal"
     squeeze_width = None
+    cs_squeeze_status = "normal"
+    cs_squeeze_size = None
     last_close_ts = None
 
     width_series = compute_width_series(candles) if use_min_width_breakout else None
+    candle_size_series = compute_candle_size_series(candles) if use_candle_size_breakout else None
+    supertrend_dir = None
+    if use_supertrend_breakout or use_supertrend_trail or use_supertrend_direction_only:
+        _, supertrend_dir = compute_supertrend_series(candles, supertrend_period, supertrend_multiplier)
 
     # HMA_GAP_SLOW(600)이 가장 큰 warmup 요구치 - hma_at 내부에서 period+100(최소 200)개
     # 윈도우 필요 + 그 중 half/sqrt WMA들이 또 앞부분을 깎아먹으므로 넉넉히 잡음
@@ -466,13 +626,51 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
             exit_price = None
             reason = None
 
+            # use_pure_regime_now: pure_regime_trail=True면 진입 직후부터, 아니면
+            # regime_trail_after_profit_pct가 설정돼있고 peak_profit_pct가 그 값을 찍은
+            # "이후부터만" True. 그 전까지는 기존 로직(아래 블록들)이 그대로 적용됨.
+            use_pure_regime_now = pure_regime_trail or (
+                regime_trail_after_profit_pct is not None and
+                peak_profit_pct >= regime_trail_after_profit_pct
+            )
+
+            # 2026-08-17: SuperTrend 트레일링(use_supertrend_trail)도 pure_regime_trail과
+            # 동일하게 "하위 청산블록 전부 우회 + 지표 뒤집힘에만 반응"하는 방식이라, 두
+            # 트레일링 모드를 합친 use_pure_trail_now로 아래 모든 게이트를 통일.
+            use_pure_supertrend_now = use_supertrend_trail
+            use_pure_trail_now = use_pure_regime_now or use_pure_supertrend_now
+
+            if use_pure_regime_now:
+                # 2026-08-16 실험: SL/TP/profit_lock/stall_exit/단계전환 등 기존 청산로직을
+                # 전부 끄고, HMA200 vs HMA600 정배열이 포지션 방향에 불리하게 뒤집히는 순간
+                # (해당 캔들 종가 기준)에만 청산 - "정배열/역배열로만 트레일링".
+                regime_now = htf_trend_at(candles, t)
+                broke_regime = (
+                    (side == "long" and regime_now == "down") or
+                    (side == "short" and regime_now == "up")
+                )
+                if broke_regime:
+                    exit_price, reason = close, "Regime Flip"
+            elif use_pure_supertrend_now:
+                # 2026-08-17 실험: 위와 동일한 구조로, HMA regime 대신 SuperTrend 방향이
+                # 포지션에 불리하게 뒤집히는 순간(해당 캔들 종가 기준)에만 청산.
+                st_dir_now = supertrend_dir[t] if t < len(supertrend_dir) else np.nan
+                broke_st = (
+                    not np.isnan(st_dir_now) and (
+                        (side == "long" and st_dir_now == -1.0) or
+                        (side == "short" and st_dir_now == 1.0)
+                    )
+                )
+                if broke_st:
+                    exit_price, reason = close, "SuperTrend Flip"
+
             # 2026-08-16: "초반 무동력" 조기청산 - 진입 후 stall_exit_candles개 캔들이
             # 지나도록 peak_profit_pct가 stall_exit_min_peak_pct%도 못 찍었으면, SL을
             # entry ∓ stall_exit_sl_pct%로 강제로 좁힘(기존 SL보다 타이트할 때만 적용 -
             # 완화는 안 함). 단계(normal/trend_follow) 무관하게 항상 체크. profit_lock
             # 트리거 전까지 SL이 너무 넓게 열려있어서 생기던 손실(그룹 A, -$3,480/60건)을
             # 줄이기 위함.
-            if stall_exit_candles is not None:
+            if stall_exit_candles is not None and not use_pure_trail_now:
                 candles_since_entry = t - position["entry_t"]
                 if candles_since_entry >= stall_exit_candles and peak_profit_pct < stall_exit_min_peak_pct:
                     stall_sl = (entry * (1 - stall_exit_sl_pct / 100) if side == "long"
@@ -483,7 +681,7 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                         position["sl_price"] = stall_sl
 
             # 0단계(normal): 1h HMA200 반대쪽 이탈 시 즉시 청산 (+ 완충 버퍼)
-            if position["profit_mode"] == "normal":
+            if position["profit_mode"] == "normal" and not use_pure_trail_now:
                 if use_regime_exit:
                     # 2026-08-14 실험: 가격 vs HMA200 대신, 진입필터와 동일하게 HMA200 vs
                     # HMA600 정배열이 불리하게 뒤집리는 순간(캔들 종가 기준) 청산. 인트라바
@@ -517,7 +715,7 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                                 exit_price, reason = close, "HMA200 Break"
 
             # 단계 전환: normal → trend_follow (1h HMA200/600 정배열)
-            if exit_price is None and position["profit_mode"] == "normal":
+            if exit_price is None and position["profit_mode"] == "normal" and not use_pure_trail_now:
                 trend = htf_trend_at(candles, t)
                 favorable = (side == "long" and trend == "up") or (side == "short" and trend == "down")
                 if favorable:
@@ -525,7 +723,7 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                     position["hma_gap_peak"] = 0
 
             # trend_follow: 본전방어 + HMA갭 추세추종 트레일링
-            if exit_price is None and position["profit_mode"] == "trend_follow":
+            if exit_price is None and position["profit_mode"] == "trend_follow" and not use_pure_trail_now:
                 staged_sl = None
                 if peak_profit_pct >= MIN_PROFIT_FOR_BREAKEVEN_PCT:
                     staged_sl = (entry * (1 + STAGE1_FEE_BUFFER_PCT / 100) if side == "long"
@@ -566,7 +764,7 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                         position["sl_price"] = staged_sl
 
             # normal 모드: BB avg_width 기반 SL/TP 동적 갱신 (신고점 갱신시만)
-            if exit_price is None and position["profit_mode"] == "normal" and is_new_high:
+            if exit_price is None and position["profit_mode"] == "normal" and is_new_high and not use_pure_trail_now:
                 wi = width_info_at(candles, t)
                 current_bb_width = wi["avg_width"] if wi else position.get("entry_bb_width", 0)
                 if side == "long":
@@ -586,7 +784,7 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
 
             # 무조건 익절(hard_tp_pct): 단계 무관하게 진입가 대비 이 %만큼 유리하면 즉시 익절.
             # 같은 봉에서 SL도 닿으면 보수적으로 SL 우선.
-            if exit_price is None and hard_tp_pct is not None:
+            if exit_price is None and hard_tp_pct is not None and not use_pure_trail_now:
                 target = entry * (1 + hard_tp_pct / 100) if side == "long" else entry * (1 - hard_tp_pct / 100)
                 sl_hit = (low <= position["sl_price"]) if side == "long" else (high >= position["sl_price"])
                 tp_hit = (high >= target) if side == "long" else (low <= target)
@@ -596,7 +794,7 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                     exit_price, reason = target, f"Hard TP {hard_tp_pct}%"
 
             # 청산 판정 (SL 우선 - 보수적 가정, 같은 봉 내 SL/TP 동시도달 시)
-            if exit_price is None:
+            if exit_price is None and not use_pure_trail_now:
                 if position["profit_mode"] == "normal":
                     if side == "long":
                         if low <= position["sl_price"]:
@@ -645,8 +843,48 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
         candle_close = wi["candle_close"]
 
         breakout_now = False
+        st_entry_signal = None
 
-        if use_min_width_breakout:
+        if use_supertrend_breakout:
+            # 2026-08-17: SuperTrend 방향이 완성봉 t-1에서 직전 봉(t-2) 대비 뒤집히는
+            # 순간을 그 자체로 진입 신호+방향으로 사용. 기존 밴드폭/캔들크기 트리거는
+            # 전혀 관여하지 않음(최우선, 배타적).
+            idx = t - 1
+            if idx >= 1 and idx < len(supertrend_dir):
+                d_now = supertrend_dir[idx]
+                d_prev = supertrend_dir[idx - 1]
+                if not np.isnan(d_now) and not np.isnan(d_prev) and d_now != d_prev:
+                    breakout_now = True
+                    st_entry_signal = "long" if d_now == 1.0 else "short"
+        elif use_candle_size_breakout:
+            # 2026-08-17: 밴드폭 대신 캔들 자체 크기(high-low)를 트리거로 사용. 완성봉
+            # t-1의 크기가 그 이전 candle_size_lookback개 완성봉 크기 평균의
+            # candle_size_mult(None이면 BREAKOUT_MULT)배 이상이면 즉시 breakout 인정.
+            idx = t - 1
+            if idx >= candle_size_lookback:
+                window_sz = candle_size_series[idx - candle_size_lookback:idx]
+                if len(window_sz) > 0:
+                    avg_size = float(window_sz.mean())
+                    current_size = float(candle_size_series[idx])
+                    cs_mult = candle_size_mult if candle_size_mult is not None else BREAKOUT_MULT
+                    if candle_size_require_squeeze:
+                        # 2026-08-17(2차): 밴드폭 squeeze_status state machine을 캔들크기
+                        # 버전으로 복제. 먼저 조용해진(수축) 뒤에만 확장을 breakout으로 인정.
+                        if avg_size > 0:
+                            if cs_squeeze_status == "normal":
+                                if current_size < avg_size * candle_size_squeeze_mult:
+                                    cs_squeeze_status = "squeeze"
+                                    cs_squeeze_size = current_size
+                            elif cs_squeeze_status == "squeeze":
+                                if current_size < cs_squeeze_size:
+                                    cs_squeeze_size = current_size
+                                if current_size > cs_squeeze_size * cs_mult:
+                                    cs_squeeze_status = "normal"
+                                    breakout_now = True
+                    else:
+                        if avg_size > 0 and current_size >= avg_size * cs_mult:
+                            breakout_now = True
+        elif use_min_width_breakout:
             # 2026-08-16: 직전 봉 1개가 아니라, 최근 min_width_lookback(30)개 완성봉의
             # current_width 중 최솟값 대비 배율로 판정. 죽은 횡보장이 길어져도 계속
             # 갱신되는 롤링 최솟값이라 구 squeeze_min 래칫보다 노이즈에 덜 취약함.
@@ -683,7 +921,22 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                 breakout_now = True
 
         if breakout_now:
-                if use_hma_direction_only:
+                if use_supertrend_breakout:
+                    # 2026-08-17: 방향은 이미 트리거 판정 시점에 st_entry_signal로 정해짐
+                    # (플립 방향 그 자체) - use_hma_direction_only 등 다른 방향판정 로직은
+                    # 거치지 않음(배타적, 최우선).
+                    signal = st_entry_signal
+                elif use_supertrend_direction_only:
+                    # 2026-08-17(2차): 기존 밴드폭 스퀴즈/fast_breakout 트리거는 그대로 두고
+                    # (breakout_now는 이미 위에서 결정됨), 방향판정만 HMA200/600 정배열 부호
+                    # 대신 완성봉 t-1의 SuperTrend 방향으로 결정. nan(워밍업 구간)이면 진입 취소.
+                    idx = t - 1
+                    st_dir_now = supertrend_dir[idx] if idx < len(supertrend_dir) else np.nan
+                    if np.isnan(st_dir_now):
+                        signal = None
+                    else:
+                        signal = "long" if st_dir_now == 1.0 else "short"
+                elif use_hma_direction_only:
                     # 2026-08-14: 캔들 몸통(양봉/음봉) 무시, 브레이크아웃 시점 HMA200/600
                     # 정배열/역배열로 바로 방향 결정. 불일치로 인한 취소 자체가 없어짐.
                     regime = htf_trend_at(candles, t)
