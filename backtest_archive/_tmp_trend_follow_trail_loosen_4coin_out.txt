@@ -1,0 +1,72 @@
+
+############################################################
+# BTCUSDT
+############################################################
+[BTCUSDT/BASELINE ratio=0.4 buffer=0.6] 거래수 236건  승률 64.0%  PF 1.12  MDD 55.0%  평균보유 1.8h  비복리합산 +40.5%  복리(참고) +130.19%
+  종료사유: Trend Follow Stop 234건(99.2%), HMA200 Break 1건(0.4%), HMA Trend Reversal 1건(0.4%)
+[BTCUSDT/A_DISABLE ratio=0.0 buffer=0.6] 거래수 236건  승률 64.0%  PF 1.12  MDD 55.0%  평균보유 1.8h  비복리합산 +40.5%  복리(참고) +130.19%
+  종료사유: Trend Follow Stop 234건(99.2%), HMA200 Break 1건(0.4%), HMA Trend Reversal 1건(0.4%)
+[BTCUSDT/B_LOOSER_RATIO ratio=0.2 buffer=0.6] 거래수 236건  승률 64.0%  PF 1.12  MDD 55.0%  평균보유 1.8h  비복리합산 +40.5%  복리(참고) +130.19%
+  종료사유: Trend Follow Stop 234건(99.2%), HMA200 Break 1건(0.4%), HMA Trend Reversal 1건(0.4%)
+[BTCUSDT/C_LOOSER_BUFFER ratio=0.4 buffer=1.2] 거래수 236건  승률 64.0%  PF 1.12  MDD 55.0%  평균보유 1.8h  비복리합산 +40.5%  복리(참고) +130.19%
+  종료사유: Trend Follow Stop 234건(99.2%), HMA200 Break 1건(0.4%), HMA Trend Reversal 1건(0.4%)
+
+############################################################
+# ETHUSDT
+############################################################
+[ETHUSDT/BASELINE ratio=0.4 buffer=0.6] 거래수 252건  승률 61.1%  PF 1.20  MDD 46.4%  평균보유 1.4h  비복리합산 +55.9%  복리(참고) +439.51%
+  종료사유: Trend Follow Stop 251건(99.6%), HMA Trend Reversal 1건(0.4%)
+[ETHUSDT/A_DISABLE ratio=0.0 buffer=0.6] 거래수 252건  승률 61.1%  PF 1.20  MDD 46.4%  평균보유 1.4h  비복리합산 +55.8%  복리(참고) +435.69%
+  종료사유: Trend Follow Stop 251건(99.6%), HMA Trend Reversal 1건(0.4%)
+[ETHUSDT/B_LOOSER_RATIO ratio=0.2 buffer=0.6] 거래수 252건  승률 61.1%  PF 1.20  MDD 46.4%  평균보유 1.4h  비복리합산 +55.8%  복리(참고) +435.69%
+  종료사유: Trend Follow Stop 251건(99.6%), HMA Trend Reversal 1건(0.4%)
+[ETHUSDT/C_LOOSER_BUFFER ratio=0.4 buffer=1.2] 거래수 252건  승률 61.1%  PF 1.20  MDD 46.4%  평균보유 1.4h  비복리합산 +55.8%  복리(참고) +435.69%
+  종료사유: Trend Follow Stop 251건(99.6%), HMA Trend Reversal 1건(0.4%)
+
+############################################################
+# XRPUSDT
+############################################################
+[XRPUSDT/BASELINE ratio=0.4 buffer=0.6] 거래수 228건  승률 68.9%  PF 1.36  MDD 39.7%  평균보유 1.4h  비복리합산 +59.3%  복리(참고) +571.71%
+  종료사유: Trend Follow Stop 228건(100.0%)
+[XRPUSDT/A_DISABLE ratio=0.0 buffer=0.6] 거래수 228건  승률 68.9%  PF 1.35  MDD 39.7%  평균보유 1.4h  비복리합산 +59.3%  복리(참고) +567.31%
+  종료사유: Trend Follow Stop 227건(99.6%), HMA Trend Reversal 1건(0.4%)
+[XRPUSDT/B_LOOSER_RATIO ratio=0.2 buffer=0.6] 거래수 228건  승률 68.9%  PF 1.35  MDD 39.7%  평균보유 1.4h  비복리합산 +59.3%  복리(참고) +567.31%
+  종료사유: Trend Follow Stop 227건(99.6%), HMA Trend Reversal 1건(0.4%)
+[XRPUSDT/C_LOOSER_BUFFER ratio=0.4 buffer=1.2] 거래수 228건  승률 68.9%  PF 1.35  MDD 39.7%  평균보유 1.4h  비복리합산 +59.3%  복리(참고) +567.31%
+  종료사유: Trend Follow Stop 227건(99.6%), HMA Trend Reversal 1건(0.4%)
+
+############################################################
+# SOLUSDT
+############################################################
+[SOLUSDT/BASELINE ratio=0.4 buffer=0.6] 거래수 257건  승률 64.6%  PF 1.17  MDD 48.9%  평균보유 1.2h  비복리합산 +56.9%  복리(참고) +391.17%
+  종료사유: Trend Follow Stop 256건(99.6%), HMA Trend Reversal 1건(0.4%)
+[SOLUSDT/A_DISABLE ratio=0.0 buffer=0.6] 거래수 257건  승률 64.6%  PF 1.17  MDD 48.9%  평균보유 1.2h  비복리합산 +56.9%  복리(참고) +391.11%
+  종료사유: Trend Follow Stop 255건(99.2%), HMA Trend Reversal 2건(0.8%)
+[SOLUSDT/B_LOOSER_RATIO ratio=0.2 buffer=0.6] 거래수 257건  승률 64.6%  PF 1.17  MDD 48.9%  평균보유 1.2h  비복리합산 +56.9%  복리(참고) +391.17%
+  종료사유: Trend Follow Stop 256건(99.6%), HMA Trend Reversal 1건(0.4%)
+[SOLUSDT/C_LOOSER_BUFFER ratio=0.4 buffer=1.2] 거래수 257건  승률 64.6%  PF 1.17  MDD 48.9%  평균보유 1.2h  비복리합산 +56.9%  복리(참고) +391.11%
+  종료사유: Trend Follow Stop 255건(99.2%), HMA Trend Reversal 2건(0.8%)
+
+======================================================================
+[종합 비교표]
+======================================================================
+| 심볼 | 조합 | 거래수 | 승률 | PF | MDD | 비복리합산% | 복리(참고) | 평균보유h |
+|---|---|---|---|---|---|---|---|---|
+| BTCUSDT | BASELINE | 236 | 64.0% | 1.12 | 55.0% | +40.5% | +130.19% | 1.8 |
+| BTCUSDT | A_DISABLE | 236 | 64.0% | 1.12 | 55.0% | +40.5% | +130.19% | 1.8 |
+| BTCUSDT | B_LOOSER_RATIO | 236 | 64.0% | 1.12 | 55.0% | +40.5% | +130.19% | 1.8 |
+| BTCUSDT | C_LOOSER_BUFFER | 236 | 64.0% | 1.12 | 55.0% | +40.5% | +130.19% | 1.8 |
+| ETHUSDT | BASELINE | 252 | 61.1% | 1.20 | 46.4% | +55.9% | +439.51% | 1.4 |
+| ETHUSDT | A_DISABLE | 252 | 61.1% | 1.20 | 46.4% | +55.8% | +435.69% | 1.4 |
+| ETHUSDT | B_LOOSER_RATIO | 252 | 61.1% | 1.20 | 46.4% | +55.8% | +435.69% | 1.4 |
+| ETHUSDT | C_LOOSER_BUFFER | 252 | 61.1% | 1.20 | 46.4% | +55.8% | +435.69% | 1.4 |
+| XRPUSDT | BASELINE | 228 | 68.9% | 1.36 | 39.7% | +59.3% | +571.71% | 1.4 |
+| XRPUSDT | A_DISABLE | 228 | 68.9% | 1.35 | 39.7% | +59.3% | +567.31% | 1.4 |
+| XRPUSDT | B_LOOSER_RATIO | 228 | 68.9% | 1.35 | 39.7% | +59.3% | +567.31% | 1.4 |
+| XRPUSDT | C_LOOSER_BUFFER | 228 | 68.9% | 1.35 | 39.7% | +59.3% | +567.31% | 1.4 |
+| SOLUSDT | BASELINE | 257 | 64.6% | 1.17 | 48.9% | +56.9% | +391.17% | 1.2 |
+| SOLUSDT | A_DISABLE | 257 | 64.6% | 1.17 | 48.9% | +56.9% | +391.11% | 1.2 |
+| SOLUSDT | B_LOOSER_RATIO | 257 | 64.6% | 1.17 | 48.9% | +56.9% | +391.17% | 1.2 |
+| SOLUSDT | C_LOOSER_BUFFER | 257 | 64.6% | 1.17 | 48.9% | +56.9% | +391.11% | 1.2 |
+
+=== TREND FOLLOW TRAIL LOOSEN 4-COIN 1Y TEST COMPLETE ===

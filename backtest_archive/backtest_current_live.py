@@ -404,7 +404,8 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                   supertrend_period=10, supertrend_multiplier=3.0,
                   entry_sl_cap_pct=None,
                   stall_exit_candles=None, stall_exit_min_peak_pct=0.15, stall_exit_sl_pct=0.8,
-                  pure_regime_trail=False, regime_trail_after_profit_pct=None):
+                  pure_regime_trail=False, regime_trail_after_profit_pct=None,
+                  profit_lock_ratio_tier2_pct=None, profit_lock_ratio_tier2=None):
     """hma200_buffer_pct: normal 단계 HMA200 Break 하드룰에 완충 버퍼(%) 추가.
     0이면 기존과 동일(HMA200을 살짝만 넘어도 즉시 청산). >0이면 그만큼 더 넘어가야 청산.
 
@@ -748,8 +749,15 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                                 staged_sl = max(staged_sl, tight_sl) if side == "long" else min(staged_sl, tight_sl)
 
                 # 추가: 최고수익 반납 방지 트레일링 (HMA갭 수축 대기와 무관하게 항상 체크)
+                # 2026-08-17(19차): 구간별 ratio 차등 적용 실험. peak_profit_pct가
+                # profit_lock_ratio_tier2_pct 이상이면 그 순간부터 profit_lock_ratio_tier2로
+                # 전환(더 타이트하게 잠금). None이면 기존과 동일(단일 ratio).
                 if profit_lock_trigger_pct is not None and peak_profit_pct >= profit_lock_trigger_pct:
-                    locked_pct = peak_profit_pct * profit_lock_ratio
+                    effective_ratio = profit_lock_ratio
+                    if (profit_lock_ratio_tier2_pct is not None
+                            and peak_profit_pct >= profit_lock_ratio_tier2_pct):
+                        effective_ratio = profit_lock_ratio_tier2
+                    locked_pct = peak_profit_pct * effective_ratio
                     profit_lock_sl = (entry * (1 + locked_pct / 100) if side == "long"
                                        else entry * (1 - locked_pct / 100))
                     if staged_sl is None:
