@@ -15,7 +15,7 @@ def create_default_coin_state(coin_name, margin=1000):
         "entry_time": None,
         "current_price": 0,
         "margin": margin,
-        "leverage": 10,
+        "leverage": 5,
         "position_size": 0,
         "profit": 0,
         "profit_pct": 0,

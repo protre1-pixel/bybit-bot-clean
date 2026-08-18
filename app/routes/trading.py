@@ -66,7 +66,7 @@ def start_trading():
             "assigned_coin": None,
             "is_active": False,
             "entry_percent": 75,
-            "leverage": 10,
+            "leverage": 5,
             "tp": 2.0,
             "sl": 3.0
         }
@@ -185,7 +185,7 @@ def reset_all():
                 "assigned_coin": None,
                 "is_active": False,
                 "entry_percent": 75,
-                "leverage": 10,
+                "leverage": 5,
                 "tp": 2.0,
                 "sl": 3.0
             }
