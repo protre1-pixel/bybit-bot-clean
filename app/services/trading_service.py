@@ -6,8 +6,14 @@ from app.utils import load_state, save_state, load_trades, save_trades
 logger = logging.getLogger(__name__)
 
 
-BREAKOUT_MULTIPLIER = 1.6  # 스퀴즈 구간 평균 폭 대비 이만큼 넓어지면 발동
-SQUEEZE_ENTER_MULT = 0.7  # 폭이 평균의 이 비율 이하로 눌리면 스퀴즈 진입
+BREAKOUT_MULTIPLIER = 1.3  # 스퀴즈 구간 평균 폭 대비 이만큼 넓어지면 발동
+SQUEEZE_ENTER_MULT = 0.85  # 폭이 평균의 이 비율 이하로 눌리면 스퀴즈 진입
+# 2026-08-19(35차): 진입시점이 너무 늦다는 사용자 피드백으로 0.7/1.6 → 0.85/1.3로 완화.
+# 백테스트(backtest_archive/test_sq085_bo13_lev5_16sl_4coin_1y.py, 레버5x/홀드3h/SL16%
+# 구조는 그대로 유지) 결과: ETH는 승률·PF 개선, BTC/XRP는 PF·MDD 다소 악화, SOL은 MDD
+# 개선. 거래수는 전 종목 +50~65%, 비복리합산수익은 전 종목 개선. 레버10x+홀드1h+SL8.5%
+# 조합은 4종목 전부 PF 1.2~1.7대로 붕괴해 배포 보류(36~37차) - 레버/홀드/SL은 그대로
+# 두고 이 sq/bo 값만 반영. 상세: backtest_archive/2026-08-19_sq085_bo13_deploy.md
 # 2026-08-12: 15분봉 sq/bo 재최적화 스윕(backtest_15m_regime_sweep.py) + 워크포워드
 # 검증(backtest_15m_walkforward.py) 결과로 1시간봉(sq=0.5/bo=1.5) → 15분봉(sq=0.7/bo=1.6)
 # + 진입필터를 HMA200/600 정배열(regime)로 교체. 신호·진입필터·청산로직(HMA200 Break,
