@@ -19,7 +19,7 @@ def get_all_settings():
     for coin in state.get("available_coins", []):
         if coin in state:
             result[coin] = {
-                "leverage": state[coin].get("leverage", 5),
+                "leverage": state[coin].get("leverage", 10),
                 "margin": state[coin].get("margin", 1000),
                 "position_ratio": state[coin].get("position_ratio", 75),
                 "tp": state[coin].get("tp", 2.0),
@@ -43,7 +43,7 @@ def get_settings(coin):
         return jsonify({"error": "Coin not found"}), 404
 
     return jsonify({
-        "leverage": state[coin].get("leverage", 5),
+        "leverage": state[coin].get("leverage", 10),
         "margin": state[coin].get("margin", 1000),
         "position_ratio": state[coin].get("position_ratio", 75),
         "tp": state[coin].get("tp", 2.0),
@@ -86,7 +86,7 @@ def set_settings(coin):
     return jsonify({
         "success": True,
         "settings": {
-            "leverage": state[coin].get("leverage", 5),
+            "leverage": state[coin].get("leverage", 10),
             "margin": state[coin].get("margin", 1000),
             "position_ratio": state[coin].get("position_ratio", 75),
             "tp": state[coin].get("tp", 2.0),
@@ -204,7 +204,7 @@ def set_global_settings():
                 "assigned_coin": None,
                 "is_active": False,
                 "entry_percent": 75,
-                "leverage": 5,
+                "leverage": 10,
                 "tp": 2.0,
                 "sl": 3.0
             }

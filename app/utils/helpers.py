@@ -15,7 +15,7 @@ def create_default_coin_state(coin_name, margin=1000):
         "entry_time": None,
         "current_price": 0,
         "margin": margin,
-        "leverage": 5,
+        "leverage": 10,  # 2026-08-19: 대장주 고정 + 홀드 로직 실험용 5→10
         "position_size": 0,
         "profit": 0,
         "profit_pct": 0,

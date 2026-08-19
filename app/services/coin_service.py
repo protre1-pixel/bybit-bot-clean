@@ -16,6 +16,18 @@ _STOCK_EXCLUSION_TYPES = {"stock", "commodity"}
 _stock_exclusion_cache = {"symbols": None, "timestamp": 0}
 STOCK_EXCLUSION_CACHE_SEC = 3600  # 1시간 캐시 (종목 목록은 자주 안 바뀜)
 
+# 2026-08-19: BEAT(innovation 타입, 실거래 -11.8% 손실 발생) 사고 이후, 거래량+변동성
+# 기반 동적 선별로는 잡코인(BEAT/JCT/KORU/SNXX 등)이 계속 후보에 섞여드는 것을 확인함
+# (심지어 변동성 가중치를 빼고 순수 거래대금 순위만 봐도 SNXX/KORU/BEAT가 상위 10~15위
+# 안에 듦 - 거래량 자체가 실제로 큰 코인들이라 거래량 필터로는 못 걸러냄).
+# 사용자 요청으로 "대장주"만 고정 화이트리스트로 거래하도록 변경. 이 목록은 시총/거래량
+# API로 검증한 게 아니라 통상적으로 메이저로 취급되는 코인을 수동으로 나열한 것 -
+# 필요시 이 리스트만 수정하면 됨.
+MAJOR_COINS = [
+    "btc", "eth", "sol", "xrp", "bnb", "ada", "doge", "avax",
+    "link", "dot", "trx", "ltc", "bch", "atom", "near",
+]
+
 
 def get_stock_excluded_symbols():
     """Bybit linear 심볼 중 토큰화 주식/원자재(symbolType) 목록 조회 (1시간 캐시)"""
@@ -154,11 +166,13 @@ def save_cached_coins(coins):
 
 
 def get_top_coins_by_volume():
-    """거래량 기준 상위 10개 코인 선별 (Bybit)"""
+    """대장주 화이트리스트(MAJOR_COINS) 중 거래량 기준으로 정렬해 선별 (Bybit)
+    2026-08-19: 잡코인 혼입 방지를 위해 후보군을 MAJOR_COINS로 고정 - 더 이상
+    Bybit 전체 상위 종목을 스캔하지 않음."""
     try:
         if not config.bybit_client:
             logger.warning("[WARN] Bybit 미연결 - 기본 코인 반환")
-            return ["sol", "doge", "ada", "avax", "link", "matic", "shib", "ape", "sui", "inj"]
+            return list(MAJOR_COINS)
 
         response = config.bybit_client.get_tickers(category="linear", limit=50)
 
@@ -170,14 +184,12 @@ def get_top_coins_by_volume():
         coins_data = response['result']['list']
         coins_data = sorted(coins_data, key=lambda x: float(x.get('turnover24h', 0)), reverse=True)
 
-        # 제외할 스테이블 코인만
-        excluded = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'FDUSD']
         stock_excluded = get_stock_excluded_symbols()
 
-        # 상위 10개 선별 (USDT 쌍만, 호가창 유동성 체크 통과한 것만)
+        # MAJOR_COINS 화이트리스트 내에서만 선별 (호가창 유동성 체크 통과한 것만)
         top_coins = []
         for coin_info in coins_data:
-            if len(top_coins) >= 10:
+            if len(top_coins) >= len(MAJOR_COINS):
                 break
             symbol = coin_info['symbol']
             if symbol in stock_excluded:
@@ -185,14 +197,13 @@ def get_top_coins_by_volume():
             if not symbol.endswith('USDT'):
                 continue
             coin_name = symbol.replace('USDT', '').lower()
-            if coin_name.upper() in excluded:
+            if coin_name not in MAJOR_COINS:
                 continue
             if not check_orderbook_liquidity(symbol):
                 logger.info(f"[INFO] {coin_name.upper()}: 호가창 유동성 부족으로 제외")
                 continue
             top_coins.append(coin_name)
 
-        top_coins = top_coins[:10]
         save_cached_coins(top_coins)
         return top_coins
 
@@ -276,11 +287,15 @@ def get_top_coins_by_hma_strength():
 
 
 def get_top_coins_by_volume_volatility():
-    """거래량 + 변동성 조합으로 상위 10개 코인 선별"""
+    """MAJOR_COINS 화이트리스트 내에서 거래량 + 변동성 조합으로 정렬해 선별.
+    2026-08-19: BEAT(잡코인, innovation 타입) 손실 사고 이후 후보군을 대장주로 고정 -
+    거래량+변동성 순위 자체는 유지하되 대상은 MAJOR_COINS로 제한됨. 순수 거래대금
+    순위로 봐도 SNXX/KORU/BEAT가 상위권에 들어서(거래량 필터만으로는 못 걸러짐)
+    화이트리스트 방식으로 전환."""
     try:
         if not config.bybit_client:
             logger.warning("[WARN] Bybit 미연결 - 기본 코인 반환")
-            return ["btc", "eth", "wld", "near", "sol", "ada", "link", "matic", "avax", "doge"]
+            return list(MAJOR_COINS)
 
         response = config.bybit_client.get_tickers(category="linear", limit=50)
 
@@ -288,11 +303,10 @@ def get_top_coins_by_volume_volatility():
             logger.error(f"[ERROR] Bybit 코인 조회 실패: {response}")
             return []
 
-        excluded = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'FDUSD']
         stock_excluded = get_stock_excluded_symbols()
         coin_scores = []
 
-        # 각 코인의 거래량 + 변동성 점수 계산
+        # 각 코인의 거래량 + 변동성 점수 계산 (MAJOR_COINS만 대상)
         for coin_info in response['result']['list']:
             symbol = coin_info['symbol']
             if not symbol.endswith('USDT'):
@@ -301,7 +315,7 @@ def get_top_coins_by_volume_volatility():
                 continue
 
             coin_name = symbol.replace('USDT', '').lower()
-            if coin_name.upper() in excluded:
+            if coin_name not in MAJOR_COINS:
                 continue
 
             try:
@@ -333,10 +347,10 @@ def get_top_coins_by_volume_volatility():
         # 최종 점수 높은 순으로 정렬
         coin_scores.sort(key=lambda x: x['combined_score'], reverse=True)
 
-        # 상위 10개 (호가창 유동성 체크 통과한 것만)
+        # MAJOR_COINS 전체 (호가창 유동성 체크 통과한 것만)
         top_coins = []
         for c in coin_scores:
-            if len(top_coins) >= 10:
+            if len(top_coins) >= len(MAJOR_COINS):
                 break
             symbol = c['coin'].upper() + 'USDT'
             if not check_orderbook_liquidity(symbol):
@@ -344,7 +358,7 @@ def get_top_coins_by_volume_volatility():
                 continue
             top_coins.append(c['coin'])
 
-        logger.info(f"[INFO] 거래량+변동성으로 선별: {top_coins}")
+        logger.info(f"[INFO] 대장주 화이트리스트 내 거래량+변동성으로 선별: {top_coins}")
         save_cached_coins(top_coins)  # ← 캐시 저장!
         return top_coins
 

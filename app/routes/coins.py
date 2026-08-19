@@ -115,7 +115,7 @@ def get_coin_settings(coin):
     return jsonify({
         "initial_seed": settings.get("initial_seed", 1000),
         "current_seed": settings.get("current_seed", settings.get("initial_seed", 1000)),
-        "leverage": settings.get("leverage", 5),
+        "leverage": settings.get("leverage", 10),
         "tp": settings.get("tp", 2.0),
         "sl": settings.get("sl", 1.5),
         "entry_percent": settings.get("entry_percent", 75)
@@ -147,7 +147,7 @@ def set_coin_settings(coin):
         state["coin_settings"][coin] = {
             "initial_seed": data.get("initial_seed", 1000),
             "current_seed": current_seed,
-            "leverage": data.get("leverage", 5),
+            "leverage": data.get("leverage", 10),
             "tp": data.get("tp", 2.0),
             "sl": data.get("sl", 1.5),
             "entry_percent": data.get("entry_percent", 75)

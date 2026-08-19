@@ -114,19 +114,11 @@ STAGE_LABEL = {
 
 HTF_TREND_CACHE_SEC = 300  # HMA200/600 진입필터 재조회 주기(초, API 부담 절감)
 
-# ── 진입 후 보유창(Hold Window) + 파국적 SL ──────────────────────────
-# 2026-08-18: 사용자 요청 - 레버리지 10배→5배 하향 + 진입 후 최소 보유시간을 1캔들(15분)
-# →3시간으로 늘리고, 그 3시간 동안은 stall_exit/HMA200-Break/trend_follow/BB SL·TP 갱신
-# 등 일반 청산 로직을 전부 끄고 오직 "진입가 대비 -16% 파국적 손실"에만 즉시 청산하도록
-# 변경. 백테스트(backtest_archive/test_min_hold_3h_lev5_16sl_4coin_1y.py, BTC/ETH/XRP/SOL
-# 15분봉 365일)로 검증: PF 2.67~4.92, MDD 8.9~20.8%(기존 대비 대폭 개선), 16% 파국적 SL은
-# 4종목 전 구간에서 단 한 번도 발동하지 않음(관측된 최대 역행폭 -8.25% 대비 충분한 안전마진).
-# 레버리지 5배 기준 이론상 강제청산은 대략 -20%대이므로 16%는 그보다 안쪽의 안전한 값.
-# 거래소 주문(set_exchange_stop_loss)도 보유창 동안엔 이 파국적 가격으로 걸어서, 봇 프로세스가
-# 죽어도 거래소 자체가 정상(더 타이트한) SL로 조기 청산하지 않고 보유창 취지를 지키게 함 -
-# 보유창이 끝나는 시점에 auto_trade 상단 게이트에서 정상 SL로 재동기화됨.
-HOLD_WINDOW_SEC = 3 * 60 * 60  # 3시간
-HOLD_CAT_SL_PCT = 16.0  # 파국적 손절 %(레버리지 5배 가정)
+# 2026-08-18 도입, 2026-08-19 제거: 진입 후 3시간 보유창(Hold Window) + 파국적 SL(16%)
+# 실험(commit 7e4e1a2)을 사용자 요청으로 완전 롤백. 대장주 화이트리스트 전환 +
+# 레버리지 10배 실험과 함께, 34~37차 백테스트 때처럼 진입 즉시 stall_exit/
+# HMA200-Break/trend_follow/BB SL·TP가 바로 작동하는 기존 로직으로 복귀함.
+# (관련 백테스트 기록: backtest_archive/test_min_hold_*.py, 2026-08-18_leverage5_3h_hold_16sl_deploy.md)
 
 
 def apply_entry_filters(symbol, coin_key, signal, state, price):
@@ -368,38 +360,10 @@ def auto_trade(coin_key, symbol, state, username=None):
         except (ValueError, TypeError) as e:
             logger.warning(f"[WARN] last_close_time 파싱 실패 ({coin_key}): {e}")
 
-        # 거래 진입 후 보유창(HOLD_WINDOW_SEC=3시간) 동안은 stall_exit/HMA200-Break/
-        # trend_follow/BB SL·TP 갱신 등 일반 청산 로직을 전부 건너뛰고, 오직 진입가 대비
-        # -HOLD_CAT_SL_PCT%(16%) 파국적 손실 시에만 즉시 청산 (2026-08-18, 상단 상수 설명 참고).
-        if state[coin_key]["position"] and state[coin_key]["entry_time"]:
-            try:
-                entry_time = datetime.fromisoformat(state[coin_key]["entry_time"])
-                elapsed = (datetime.now() - entry_time).total_seconds()
-                if elapsed < HOLD_WINDOW_SEC:
-                    entry_price = state[coin_key]["entry_price"]
-                    position_dir = state[coin_key]["position"]
-                    if position_dir == "long":
-                        hold_profit_pct = (current_price - entry_price) / entry_price * 100
-                    else:
-                        hold_profit_pct = (entry_price - current_price) / entry_price * 100
-                    if hold_profit_pct <= -HOLD_CAT_SL_PCT:
-                        logger.info(f"[CATASTROPHIC-SL] {coin_key.upper()}: 보유창(3h) 중 파국적 손실 "
-                                    f"{hold_profit_pct:.2f}%(<=-{HOLD_CAT_SL_PCT}%) → 즉시 청산")
-                        close_trade(coin_key, current_price, "Catastrophic SL (Hold Window)", state, username)
-                    return
-                elif state[coin_key].get("hold_window_active"):
-                    # 보유창 종료 시점 - 거래소 SL을 진입시 계산해둔 정상(더 타이트한) 값으로 동기화
-                    from app.services.order_service import set_exchange_stop_loss
-                    trade_mode = state.get("mode", "paper")
-                    order_symbol = f"{coin_key.upper()}USDT"
-                    sl_sync = set_exchange_stop_loss(order_symbol, state[coin_key]["sl_price"], mode=trade_mode)
-                    if trade_mode == "live" and not sl_sync.get("success"):
-                        logger.error(f"[ERROR] {coin_key.upper()} 거래소 SL 동기화 실패: {sl_sync.get('error')}")
-                    state[coin_key]["hold_window_active"] = False
-                    logger.info(f"[HOLD-WINDOW-END] {coin_key.upper()}: 3시간 보유창 종료 → 정상 SL"
-                                f"(${state[coin_key]['sl_price']:.6f})로 동기화, 일반 청산로직 재개")
-            except (ValueError, TypeError) as e:
-                logger.warning(f"[WARN] entry_time 파싱 실패 ({coin_key}): {e}")
+        # 2026-08-19: 사용자 요청으로 진입 후 3시간 보유창(HOLD_WINDOW) 게이트를 완전 제거.
+        # 34~37차 백테스트 때처럼 진입 즉시 stall_exit/HMA200-Break/trend_follow/BB SL·TP 등
+        # 일반 청산 로직이 바로 작동함 (commit 7e4e1a2 이전 동작으로 복귀). 관련 상수
+        # (HOLD_WINDOW_SEC/HOLD_CAT_SL_PCT/HOLD_CAT_SL_ENABLED)는 완전히 제거됨.
 
         # TP/SL 체크 (normal → trend_follow(HMA 갭 추적))
         if state[coin_key]["position"]:
@@ -688,7 +652,7 @@ def auto_trade(coin_key, symbol, state, username=None):
                         wallet = wallets[available_wallet]
                         current_seed = wallet.get("current_seed", 1000)
                         entry_percent = wallet.get("entry_percent", 75) / 100
-                        leverage = wallet.get("leverage", 5)
+                        leverage = wallet.get("leverage", 10)
                         tp_percent = wallet.get("tp", 3.0) / 100
                         sl_percent = wallet.get("sl", 3.5) / 100
 
@@ -813,15 +777,10 @@ def auto_trade(coin_key, symbol, state, username=None):
                                 state[coin_key]["sl_price"] = actual_entry_price + max_sl_distance
 
                         # 거래소에 실제 SL 설정 (봇 다운 시에도 거래소가 지켜주는 최후 안전망)
-                        # 2026-08-18: 진입 직후 보유창(HOLD_WINDOW_SEC=3시간) 동안은 위에서 계산한
-                        # 정상(더 타이트한) sl_price 대신, 파국적 SL(진입가 ∓HOLD_CAT_SL_PCT%) 가격으로
-                        # 거래소 주문을 걸어서 보유창 취지(초반 노이즈로 조기 손절 방지)가 거래소
-                        # 주문 자체에서도 지켜지게 함 - 정상 sl_price는 state에 그대로 저장해두고,
-                        # 보유창이 끝나는 시점(auto_trade 상단 게이트)에 그 값으로 재동기화됨.
-                        hold_cat_sl_price = (actual_entry_price * (1 - HOLD_CAT_SL_PCT / 100) if signal == "long"
-                                             else actual_entry_price * (1 + HOLD_CAT_SL_PCT / 100))
-                        state[coin_key]["hold_window_active"] = True
-                        sl_sync_result = set_exchange_stop_loss(order_symbol, hold_cat_sl_price, mode=mode)
+                        # 2026-08-19: 사용자 요청으로 진입 후 3시간 보유창(HOLD_WINDOW) 자체를
+                        # 완전 제거 - 34~37차 백테스트 때처럼 진입 즉시 정상 SL/TP·stall_exit·
+                        # HMA200-Break·trend_follow 로직이 바로 작동함 (commit 7e4e1a2 이전으로 복귀).
+                        sl_sync_result = set_exchange_stop_loss(order_symbol, state[coin_key]["sl_price"], mode=mode)
                         if mode == "live" and not sl_sync_result.get("success"):
                             logger.error(f"[ERROR] {coin_key.upper()} 거래소 SL 설정 실패: {sl_sync_result.get('error')} - 소프트웨어 SL만으로 운용됨")
 
@@ -829,9 +788,7 @@ def auto_trade(coin_key, symbol, state, username=None):
                         wallet["is_active"] = True
                         wallet["assigned_coin"] = coin_key
 
-                        logger.info(f"[{coin_key.upper()}] {signal.upper()} 진입 ({available_wallet}, {mode}): {actual_entry_price} | "
-                                    f"TP: ${state[coin_key]['tp_price']:.6f} | 정상SL(보유창 종료후 적용): ${state[coin_key]['sl_price']:.6f} | "
-                                    f"거래소SL(보유창 3h, 파국적): ${hold_cat_sl_price:.6f}")
+                        logger.info(f"[{coin_key.upper()}] {signal.upper()} 진입 ({available_wallet}, {mode}): {actual_entry_price} | TP: ${state[coin_key]['tp_price']:.6f} | SL: ${state[coin_key]['sl_price']:.6f}")
                     else:
                         logger.debug(f"[{coin_key.upper()}] 신호 발생하나 사용 가능한 지갑 없음 (모두 거래 중)")
     except Exception as e:
