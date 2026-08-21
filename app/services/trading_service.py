@@ -638,7 +638,7 @@ def auto_trade(coin_key, symbol, state, username=None):
                 if "last_close_time" in state[coin_key] and state[coin_key]["last_close_time"]:
                     last_close_time = datetime.fromisoformat(state[coin_key]["last_close_time"])
                     elapsed = (datetime.now() - last_close_time).total_seconds()
-                    if elapsed < 3600:  # 2026-08-19: 사용자 요청으로 재진입 대기 30분→1시간(3600초)
+                    if elapsed < 1800:  # 2026-08-21: 사용자 요청으로 재진입 대기 1시간→30분(1800초)으로 원복 (지금 장 좋아서 재진입 빠르게)
                         is_recently_closed = True
             except (ValueError, TypeError):
                 pass
