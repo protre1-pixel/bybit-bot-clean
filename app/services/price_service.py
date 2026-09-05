@@ -849,3 +849,67 @@ def calculate_band_width_average(symbol, lookback=30, timeframe=60):
     except Exception as e:
         logger.error(f"[ERROR] Band Width 평균 계산 에러: {symbol} - {e}")
         return None
+
+
+# ── BTC 모멘텀 게이트 (2026-09-05) ──────────────────────────────────
+# 사용자 제안 "장이 조용할 때(BTC가 별로 안 움직일 때)는 아예 진입을 막아보자"를
+# 백테스트로 검증(backtest_archive/test_btc_momentum_gate_15coin_17d.py 15종 17일,
+# test_btc_momentum_gate_4coin_1y.py BTC/ETH/XRP/SOL 1년)한 결과, "BTC 직전 4시간
+# (16개 15분봉) 종가 대비 현재 종가 등락률 |1%| 이상일 때만 전체 코인(BTC 포함)
+# 롱/숏 무관 신규 진입 허용, 아니면 전부 차단"(방향 연동 안 함 - 박스권 필터) 규칙이
+# 1년치 4종목 전부에서 일관되게 개선 확인: 게이트없음 n=1585 승률62.4% PF1.08
+# MDD69.2% 수익+$7,264 → 게이트있음 n=659 승률74.7% PF1.98 MDD30.3% 수익+$100,101.
+# 거래수는 -58% 줄지만 승률/PF/MDD/수익 전부 개선되어 실거래 반영.
+BTC_GATE_LOOKBACK = 16        # 4시간 = 15분봉 16개
+BTC_GATE_THRESHOLD_PCT = 1.0  # |등락률| 이 값(%) 이상이면 게이트 열림(진입 허용)
+
+# 완성 캔들 단위로만 갱신 - 같은 15분봉 안에서는 재계산 없이 캐시 재사용
+# (check_entry_signal이 코인마다, 폴링(2초)마다 호출되므로 매번 API 호출 방지).
+_btc_gate_cache = {"candle_time": None, "is_open": True, "pct": 0.0}
+
+
+def is_btc_momentum_gate_open():
+    """BTC 직전 4시간(16개 15분봉) 등락률이 |BTC_GATE_THRESHOLD_PCT|% 이상이면 True(진입
+    허용), 아니면 False(신규 진입 전체 차단 - 기존 포지션 청산 로직에는 관여하지 않음).
+    데이터 조회 실패 시에는 안전하게 마지막 캐시값(초기값은 True=게이트 열림, 즉 게이트
+    도입 전과 동일하게 진입 차단하지 않음)을 반환."""
+    try:
+        if not config.bybit_client:
+            return _btc_gate_cache["is_open"]
+
+        response = config.bybit_client.get_kline(
+            category="linear",
+            symbol="BTCUSDT",
+            interval="15",
+            limit=BTC_GATE_LOOKBACK + 5
+        )
+
+        if response['retCode'] != 0 or not response['result']['list']:
+            return _btc_gate_cache["is_open"]
+
+        data_list = response['result']['list']
+        data_list.reverse()
+
+        # 마지막 완성 캔들은 -2 (진행 중인 캔들 -1 제외), 그로부터 16개 전은 -2-LOOKBACK
+        if len(data_list) < BTC_GATE_LOOKBACK + 2:
+            return _btc_gate_cache["is_open"]
+
+        candle_time = data_list[-2][0]
+        if _btc_gate_cache["candle_time"] == candle_time:
+            return _btc_gate_cache["is_open"]
+
+        close_now = float(data_list[-2][4])
+        close_prev = float(data_list[-2 - BTC_GATE_LOOKBACK][4])
+        pct = (close_now - close_prev) / close_prev * 100
+        is_open = abs(pct) >= BTC_GATE_THRESHOLD_PCT
+
+        if _btc_gate_cache["is_open"] != is_open:
+            logger.info(f"[BTC-GATE] {'열림' if is_open else '닫힘'} (BTC 4h 등락률 {pct:+.2f}%, "
+                        f"기준 |{BTC_GATE_THRESHOLD_PCT}%|)")
+
+        _btc_gate_cache.update({"candle_time": candle_time, "is_open": is_open, "pct": pct})
+        return is_open
+
+    except Exception as e:
+        logger.error(f"[ERROR] BTC 모멘텀 게이트 계산 에러: {e}")
+        return _btc_gate_cache["is_open"]

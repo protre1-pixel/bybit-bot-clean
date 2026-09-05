@@ -405,7 +405,8 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                   entry_sl_cap_pct=None,
                   stall_exit_candles=None, stall_exit_min_peak_pct=0.15, stall_exit_sl_pct=0.8,
                   pure_regime_trail=False, regime_trail_after_profit_pct=None,
-                  profit_lock_ratio_tier2_pct=None, profit_lock_ratio_tier2=None):
+                  profit_lock_ratio_tier2_pct=None, profit_lock_ratio_tier2=None,
+                  entry_gate_ts=None):
     """hma200_buffer_pct: normal 단계 HMA200 Break 하드룰에 완충 버퍼(%) 추가.
     0이면 기존과 동일(HMA200을 살짝만 넘어도 즉시 청산). >0이면 그만큼 더 넘어가야 청산.
 
@@ -619,6 +620,16 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
             position["prev_max"] = position["max_profit_price"]
             max_profit_price = position["max_profit_price"]
 
+            # 2026-09-05: 최악(불리한)가 갱신 - MAE(Max Adverse Excursion) 분석용.
+            # 기존 로직에는 전혀 관여하지 않는 순수 기록용 필드(worst_price) - long은
+            # 인트라바 저가, short은 인트라바 고가가 최악 지점.
+            if side == "long":
+                if low < position["worst_price"]:
+                    position["worst_price"] = low
+            else:
+                if high > position["worst_price"]:
+                    position["worst_price"] = high
+
             if side == "long":
                 peak_profit_pct = (max_profit_price - entry) / entry * 100
             else:
@@ -827,12 +838,16 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                 notional = position["notional"]
                 pnl = notional * raw_pct - notional * FEE_RATE * 2
                 seed += pnl
+                worst_price = position["worst_price"]
+                mae_pct = ((entry - worst_price) / entry * 100 if side == "long"
+                           else (worst_price - entry) / entry * 100)
                 trades.append({
                     "entry_ts": position["entry_ts"], "exit_ts": ts, "side": side,
                     "entry": entry, "exit": exit_price, "profit": pnl,
                     "pct": raw_pct * 100, "reason": reason,
                     "hold_h": (ts - position["entry_ts"]) / 3_600_000,
                     "peak_pct": peak_profit_pct,
+                    "mae_pct": mae_pct,
                 })
                 last_close_ts = ts
                 position = None
@@ -1068,6 +1083,12 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                             if not trend_ok:
                                 signal = None
 
+                # 2026-09-05: entry_gate_ts - 외부에서 계산한 "진입 허용 시각 집합"(예: BTC
+                # 등락률 필터)이 주어지면, 그 시각에 없는 캔들은 신호가 떠도 진입 자체를 취소.
+                # 기존 로직에는 전혀 관여하지 않는 순수 게이트(방향/사유 무관, on/off만).
+                if signal and entry_gate_ts is not None and ts not in entry_gate_ts:
+                    signal = None
+
                 if signal:
                     entry_price = candle_close
                     wi_entry = width_info_at(candles, t)
@@ -1101,6 +1122,7 @@ def run_backtest(candles, hma200_buffer_pct=0.0, profit_lock_trigger_pct=None, p
                     position = {
                         "side": signal, "entry": entry_price, "entry_ts": ts, "entry_t": t,
                         "max_profit_price": entry_price, "prev_max": entry_price,
+                        "worst_price": entry_price,
                         "sl_price": sl_price, "tp_price": tp_price,
                         "profit_mode": "normal", "hma_gap_peak": 0,
                         "entry_bb_width": entry_bb_width, "notional": notional,

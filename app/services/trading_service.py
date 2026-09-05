@@ -645,6 +645,19 @@ def auto_trade(coin_key, symbol, state, username=None):
 
             if not is_recently_closed:
                 signal = check_entry_signal(symbol, coin_key, state)
+
+                # 2026-09-05: BTC 모멘텀 게이트 - 신호가 떠도 BTC 직전 4시간 등락률이
+                # |1%| 미만(장이 조용함)이면 진입만 취소(기존 신호/청산 로직은 그대로 유지).
+                # 백테스트(backtest_archive/test_btc_momentum_gate_4coin_1y.py) 검증:
+                # BTC/ETH/XRP/SOL 1년, 게이트있음 승률74.7%/PF1.98/MDD30.3%/수익+$100,101
+                # vs 게이트없음 승률62.4%/PF1.08/MDD69.2%/수익+$7,264 (거래수는 -58%).
+                if signal:
+                    from app.services.price_service import is_btc_momentum_gate_open
+                    if not is_btc_momentum_gate_open():
+                        logger.info(f"[BTC-GATE] {coin_key.upper()}: {signal.upper()} 신호 발생했지만 "
+                                    f"BTC 4h 등락률 게이트 미충족 → 진입 취소")
+                        signal = None
+
                 if signal:
                     # 사용 가능한 지갑 찾기
                     available_wallet = find_available_wallet(state)
