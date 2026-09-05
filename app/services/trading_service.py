@@ -646,16 +646,20 @@ def auto_trade(coin_key, symbol, state, username=None):
             if not is_recently_closed:
                 signal = check_entry_signal(symbol, coin_key, state)
 
-                # 2026-09-05: BTC 모멘텀 게이트 - 신호가 떠도 BTC 직전 4시간 등락률이
+                # 2026-09-05: BTC 모멘텀 게이트 - 신호가 떠도 BTC 직전 1시간 등락률이
                 # |1%| 미만(장이 조용함)이면 진입만 취소(기존 신호/청산 로직은 그대로 유지).
-                # 백테스트(backtest_archive/test_btc_momentum_gate_4coin_1y.py) 검증:
-                # BTC/ETH/XRP/SOL 1년, 게이트있음 승률74.7%/PF1.98/MDD30.3%/수익+$100,101
-                # vs 게이트없음 승률62.4%/PF1.08/MDD69.2%/수익+$7,264 (거래수는 -58%).
+                # lookback은 최초 4시간으로 도입 후, 추가 스윕 검증(backtest_archive/
+                # test_btc_gate_lookback_sweep_4coin_1y.py, test_btc_gate_1h_lookback_15coin_1y.py,
+                # test_btc_gate_4h_lookback_15coin_1y.py)에서 1시간이 4시간보다 15코인·1년
+                # 기준 전 지표(승률/PF/MDD/수익) 우세로 확인되어 1시간으로 축소:
+                # 게이트있음(1시간) 승률81.4%/PF3.30/MDD12.1%/수익+$372,485
+                # vs 게이트있음(4시간, 이전) 승률73.5%/PF1.95/MDD33.0%/수익+$362,311
+                # vs 게이트없음 승률64.9%/PF1.23/MDD44.6%/수익+$279,989.
                 if signal:
                     from app.services.price_service import is_btc_momentum_gate_open
                     if not is_btc_momentum_gate_open():
                         logger.info(f"[BTC-GATE] {coin_key.upper()}: {signal.upper()} 신호 발생했지만 "
-                                    f"BTC 4h 등락률 게이트 미충족 → 진입 취소")
+                                    f"BTC 1h 등락률 게이트 미충족 → 진입 취소")
                         signal = None
 
                 if signal:
