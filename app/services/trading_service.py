@@ -105,7 +105,9 @@ PROFIT_LOCK_RATIO = 0.8  # 2026-08-21: 사용자 요청 - 지금 장(상승 추�
 # 선택적으로 SL을 조임 - 잘 달리는 거래는 이 조건에 걸리기 전에 이미 peak가 올라가 있어 전혀 영향
 # 없음. backtest_archive/test_stallexit_fastbo_xrp_1y.py(XRP 15분봉 365일)에서 PF 1.13→1.35,
 # MDD 61.5%→37.6%, 복리수익률 +188.91%→+427.37%로 개선 확인 후 적용.
-STALL_EXIT_CANDLES = 8         # 진입 후 이 캔들수(15분봉×8=2시간) 지나도록 미달이면 SL 조임 대상
+# 2026-09-11: 사용자 지시로 8캔들(2시간)→16캔들(4시간)로 완화 - 초반 무동력 판정까지
+# 더 오래 기다려서, 정상적으로 천천히 붙는 추세까지 너무 일찍 SL을 조이는 걸 방지.
+STALL_EXIT_CANDLES = 16        # 진입 후 이 캔들수(15분봉×16=4시간) 지나도록 미달이면 SL 조임 대상
 STALL_EXIT_MIN_PEAK_PCT = 0.5  # PROFIT_LOCK_TRIGGER_PCT와 동일 기준 (그 전까지 못 찍은 거래만 대상)
 STALL_EXIT_SL_PCT = 0.4        # 조여지는 SL 폭 (진입가 대비 %, 기존 SL이 더 타이트하면 유지)
 
@@ -605,30 +607,36 @@ def auto_trade(coin_key, symbol, state, username=None):
             # ── 청산 판정 ──
             # normal 단계만 TP 상한을 둠. trend_follow 단계는
             # "추세가 커지면 계속 따라간다"는 목적이므로 TP 없이 SL(HMA 갭 추종)만으로 청산.
+            # 2026-09-11: SL 청산가는 이론상 목표가(sl_price)가 아니라 실제 감지 시점의
+            # current_price로 기록 - 폴링 주기 특성상 current_price가 sl_price를 이미
+            # 넘어선 뒤에야 감지되는 경우가 흔한데(특히 STALL-EXIT처럼 SL을 크게 조이는
+            # 케이스), 기존엔 그 괴리를 무시하고 이론가를 그대로 체결가로 기록해서 페이퍼
+            # 모드 손익이 실제보다 낙관적으로 계산됨(실거래 검증: BNB/ADA/SOL 3건에서 실제
+            # 손실이 기록 대비 1.5~2.5배). TP는 원래도 current_price를 써서 문제 없었음.
             if profit_mode == "normal":
                 if position_dir == "long":
                     if current_price >= state[coin_key]["tp_price"]:
                         close_trade(coin_key, current_price, "Take Profit", state, username)
                         return
                     elif current_price <= state[coin_key]["sl_price"]:
-                        close_trade(coin_key, state[coin_key]["sl_price"], "Stop Loss", state, username)
+                        close_trade(coin_key, current_price, "Stop Loss", state, username)
                         return
                 else:
                     if current_price <= state[coin_key]["tp_price"]:
                         close_trade(coin_key, current_price, "Take Profit", state, username)
                         return
                     elif current_price >= state[coin_key]["sl_price"]:
-                        close_trade(coin_key, state[coin_key]["sl_price"], "Stop Loss", state, username)
+                        close_trade(coin_key, current_price, "Stop Loss", state, username)
                         return
             else:
                 reason = f"{STAGE_LABEL.get(profit_mode, profit_mode)} Stop"
                 if position_dir == "long":
                     if current_price <= state[coin_key]["sl_price"]:
-                        close_trade(coin_key, state[coin_key]["sl_price"], reason, state, username)
+                        close_trade(coin_key, current_price, reason, state, username)
                         return
                 else:
                     if current_price >= state[coin_key]["sl_price"]:
-                        close_trade(coin_key, state[coin_key]["sl_price"], reason, state, username)
+                        close_trade(coin_key, current_price, reason, state, username)
                         return
 
         # 진입 신호 체크
@@ -646,7 +654,7 @@ def auto_trade(coin_key, symbol, state, username=None):
             if not is_recently_closed:
                 signal = check_entry_signal(symbol, coin_key, state)
 
-                # 2026-09-05: BTC 모멘텀 게이트 - 신호가 떠도 BTC 직전 1시간 등락률이
+                # 2026-09-05: BTC 모멘텀 게이트 - 신호가 떠도 BTC 직전 4시간 등락률이
                 # |1%| 미만(장이 조용함)이면 진입만 취소(기존 신호/청산 로직은 그대로 유지).
                 # lookback은 최초 4시간으로 도입 후, 추가 스윕 검증(backtest_archive/
                 # test_btc_gate_lookback_sweep_4coin_1y.py, test_btc_gate_1h_lookback_15coin_1y.py,
@@ -659,7 +667,7 @@ def auto_trade(coin_key, symbol, state, username=None):
                     from app.services.price_service import is_btc_momentum_gate_open
                     if not is_btc_momentum_gate_open():
                         logger.info(f"[BTC-GATE] {coin_key.upper()}: {signal.upper()} 신호 발생했지만 "
-                                    f"BTC 1h 등락률 게이트 미충족 → 진입 취소")
+                                    f"BTC 4h 등락률 게이트 미충족 → 진입 취소")
                         signal = None
 
                 if signal:
