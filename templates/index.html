@@ -557,7 +557,7 @@
                         <form onsubmit="saveTradeSettings(event)" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div class="form-group">
                                 <label style="font-size: 11px;">초기 자본 ($)</label>
-                                <input type="number" id="initial-capital" placeholder="3000" min="100" step="1" required style="font-weight: bold;" onchange="updateTradeAmount()">
+                                <input type="number" id="initial-capital" placeholder="3000" min="10" step="1" required style="font-weight: bold;" onchange="updateTradeAmount()">
                             </div>
 
                             <div class="form-group">
@@ -1143,8 +1143,8 @@
             const initialCapital = parseFloat(document.getElementById('initial-capital').value);
             const maxTrades = parseInt(document.getElementById('max-trades').value);
 
-            if (!initialCapital || initialCapital < 100) {
-                alert('⚠️ 초기자본은 100 이상이어야 합니다');
+            if (!initialCapital || initialCapital < 10) {
+                alert('⚠️ 초기자본은 10 이상이어야 합니다');
                 return;
             }
 
