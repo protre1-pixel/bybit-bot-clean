@@ -138,7 +138,18 @@ def set_mode(mode):
 @dashboard_bp.route('/calendar/<int:year>/<int:month>', methods=['GET'])
 @token_required
 def get_calendar_data(year, month):
-    """달력 데이터 조회 (날짜별 수익금)"""
+    """달력 데이터 조회 (날짜별 수익금)
+
+    [2026-09-19 수정] 기존 로직은 조회하는 "월"마다 매번
+    "오늘 시점의 실시간 total_seed - 그 달 수익"으로 그 달의 초기 시드를 역산했다.
+    이러면 오늘 시점의 total_seed에는 그 달 이후(미래) 달의 수익까지 이미 반영돼 있는데,
+    그걸 그 달 수익만 빼서 되돌리다 보니 아직 지나지도 않은 미래 달의 수익이
+    과거 달의 마감 잔고에 섞여 들어가는 버그가 있었다 (월 경계에서 마감금액 불일치).
+    → 전체 거래를 시간순으로 한 번에 순회해서, "오늘 총시드 - 전체 누적수익"이라는
+      단 하나의 고정 앵커에서 시작하는 일별 누적 잔고 곡선을 만들고, 그중 요청한 달만
+      잘라서 반환하도록 수정. 이러면 모든 달이 같은 기준선을 공유하므로
+      월 경계에서도 어제/오늘 잔고가 항상 그날 손익만큼만 차이나게 된다.
+    """
     username = get_current_user() or 'guest'
     trades = load_trades(username)
     state = load_state(username)
@@ -146,63 +157,56 @@ def get_calendar_data(year, month):
     target_year_month = f"{year:04d}-{month:02d}"
     current_total_seed = state.get('total_seed', 3000)
 
-    # 해당 월 이전까지의 수익 계산 (이전 달의 마지막 시드 구하기)
-    profit_before_month = 0
+    # 전체 거래를 매도시간(exit_time) 기준으로 시간순 정렬
+    parsed_trades = []
     for trade in trades:
         try:
-            exit_date = datetime.fromisoformat(trade['exit_time']).strftime('%Y-%m-%d')
-            exit_year_month = exit_date[:7]
-
-            # 대상 월보다 이전 거래만 포함
-            if exit_year_month < target_year_month:
-                profit_before_month += trade.get('profit', 0)
-        except (ValueError, TypeError, KeyError):
-            pass
-
-    # 초기 시드 = 현재 총시드 - 이전 월까지의 수익 - 현재 월 수익
-    initial_capital = state.get('total_seed', 3000)
-    profit_this_month = 0
-
-    daily_profit = {}
-
-    # 현재 월의 거래 처리 (매도 시간 기준)
-    for trade in trades:
-        try:
-            # exit_time(매도 시간) 기준으로 날짜 추출
-            exit_date = datetime.fromisoformat(trade['exit_time']).strftime('%Y-%m-%d')
-            exit_year_month = exit_date[:7]
-
-            if exit_year_month == target_year_month:
-                if exit_date not in daily_profit:
-                    daily_profit[exit_date] = {
-                        'total_trades': 0,
-                        'win_trades': 0,
-                        'loss_trades': 0,
-                        'total_profit': 0,
-                        'current_seed': 0
-                    }
-
-                profit = trade.get('profit', 0)
-                profit_this_month += profit
-                daily_profit[exit_date]['total_trades'] += 1
-                daily_profit[exit_date]['total_profit'] += profit
-
-                if profit > 0:
-                    daily_profit[exit_date]['win_trades'] += 1
-                else:
-                    daily_profit[exit_date]['loss_trades'] += 1
+            exit_dt = datetime.fromisoformat(trade['exit_time'])
+            parsed_trades.append((exit_dt, trade))
         except (ValueError, TypeError, KeyError) as e:
             logger.warning(f"[WARN] 거래 날짜 파싱 실패: {e}")
+    parsed_trades.sort(key=lambda x: x[0])
 
-    # 이 달의 초기 시드 = 현재 총시드 - 이 달 수익 (= 전달 마지막 시드)
-    initial_seed = current_total_seed - profit_this_month
+    # 전체 기간 단일 앵커: 오늘 총시드 - 전체 누적수익 = 최초 시작 시드(추정)
+    total_all_time_profit = sum(t.get('profit', 0) for _, t in parsed_trades)
+    base_initial_seed = current_total_seed - total_all_time_profit
 
-    # 날짜 정렬 후 누적 시드 계산
-    sorted_dates = sorted(daily_profit.keys())
+    # 날짜별 통계 + 누적 잔고를 전체 기간에 대해 한 번에 계산 (달마다 따로 역산하지 않음)
+    all_daily = {}
     cumulative = 0
-    for date in sorted_dates:
-        cumulative += daily_profit[date]['total_profit']
-        daily_profit[date]['current_seed'] = round(initial_seed + cumulative, 2)
+    for exit_dt, trade in parsed_trades:
+        exit_date = exit_dt.strftime('%Y-%m-%d')
+        if exit_date not in all_daily:
+            all_daily[exit_date] = {
+                'total_trades': 0,
+                'win_trades': 0,
+                'loss_trades': 0,
+                'total_profit': 0,
+                'current_seed': 0
+            }
+
+        profit = trade.get('profit', 0)
+        cumulative += profit
+        all_daily[exit_date]['total_trades'] += 1
+        all_daily[exit_date]['total_profit'] += profit
+
+        if profit > 0:
+            all_daily[exit_date]['win_trades'] += 1
+        else:
+            all_daily[exit_date]['loss_trades'] += 1
+
+        all_daily[exit_date]['current_seed'] = round(base_initial_seed + cumulative, 2)
+
+    # 요청한 달만 추려서 응답 (기존 응답 형식 유지)
+    daily_profit = {d: v for d, v in all_daily.items() if d[:7] == target_year_month}
+
+    profit_before_month = sum(
+        v['total_profit'] for d, v in all_daily.items() if d[:7] < target_year_month
+    )
+    profit_this_month = sum(v['total_profit'] for v in daily_profit.values())
+
+    # 이 달 시작 시드 = 전체 앵커 + 이 달 이전까지의 누적수익
+    initial_seed = base_initial_seed + profit_before_month
 
     return jsonify({
         "year": year,
